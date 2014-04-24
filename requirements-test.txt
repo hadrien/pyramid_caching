@@ -1,0 +1,10 @@
+d2to1
+nose
+nosexcover
+nose-parameterized
+coverage
+mock
+webtest
+yanc
+Paste
+PasteDeploy

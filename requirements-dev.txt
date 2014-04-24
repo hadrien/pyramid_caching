@@ -1,0 +1,14 @@
+d2to1
+nose
+nosexcover
+coverage
+mock
+webtest
+yanc
+Paste
+PasteDeploy
+
+ipdb
+ipdbplugin
+
+-e .
