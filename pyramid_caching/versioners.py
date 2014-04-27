@@ -2,11 +2,29 @@ import inspect
 
 from zope.interface import implementer
 
-from pyramid_caching.interfaces import IKeyVersioner, IModelVersioner
+from pyramid_caching.interfaces import (
+    IIdentityInspector,
+    IKeyVersioner,
+    IModelVersioner,
+    )
 
 
 def includeme(config):
-    config.registerAdapter()
+    registry = config.registry
+
+    def identify(model_obj_or_cls):
+        return registry.queryAdapter(model_obj_or_cls, IIdentityInspector)
+
+    key_versioner = MemoryKeyVersioner()
+
+    model_versioner = ModelVersioner(key_versioner, identify)
+
+    config.registry.registerUtility(model_versioner)
+    config.add_directive('get_model_versioner', get_model_versioner)
+
+
+def get_model_versioner(config):
+    return config.registry.getUtility(IModelVersioner)
 
 
 @implementer(IKeyVersioner)
@@ -21,7 +39,7 @@ class MemoryKeyVersioner(object):
         self.versions = dict()
 
     def _format(self, key):
-        return 'version.' + key
+        return 'version.%s' % key
 
     def get(self, key, default=0):
         return self.versions.get(self._format(key), default)
@@ -38,33 +56,26 @@ class MemoryKeyVersioner(object):
 @implementer(IModelVersioner)
 class ModelVersioner(object):
 
-    def __init__(self, key_versioner, identity_inspector):
+    def __init__(self, key_versioner, identify):
         self.key_versioner = key_versioner
-        self.identity_inspector = identity_inspector
+        self.identify = identify
 
     def get_key(self, obj_or_cls):
-        identity = self.identity_inspector.identify(obj_or_cls)
-        return '%s.v_%s' % (identity, self.key_versioner.get(identity))
+        identity = self.identify(obj_or_cls)
+        return '%s:v=%s' % (identity, self.key_versioner.get(identity))
 
     def get_multi_keys(self, objects_or_classes):
-        keys = [self.identity_inspector.identify(obj_or_cls)
+        keys = [self.identify(obj_or_cls)
                 for obj_or_cls in objects_or_classes]
 
         versions = self.key_versioner.get_multi(keys)
 
-        return ['%s.v_%s' % (key, version)
+        return ['%s:v=%s' % (key, version)
                 for (key, version) in zip(keys, versions)]
 
     def incr(self, obj_or_cls, start=0):
-        self.key_versioner.incr(self.identity_inspector.identify(obj_or_cls))
+        self.key_versioner.incr(self.identify(obj_or_cls))
 
         if not inspect.isclass(obj_or_cls):  # increment model class version
-            identity = self.identity_inspector.identify(obj_or_cls.__class__)
+            identity = self.identify(obj_or_cls.__class__)
             self.key_versioner.incr(identity)
-
-    def on_model_changes(self, models):
-        for model in models:
-            self.incr(model)
-
-    def on_model_change(self, model):
-        self.incr(model)

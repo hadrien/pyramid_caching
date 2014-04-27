@@ -39,7 +39,7 @@ def get_basic():
 
     key_versioner = MemoryKeyVersioner()
     model_versioner = ModelVersioner(key_versioner,
-                                     BasicModelIdentityInspector())
+                                     BasicModelIdentityInspector().identify)
     return key_versioner, model_versioner, instantiate_model, BasicModel
 
 
