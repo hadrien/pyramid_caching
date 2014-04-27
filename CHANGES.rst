@@ -11,5 +11,3 @@ Development
 * Add an example application with dummy sqla model to run tests against
 * Add an sqla specific extention with hook on session events to get model
   modifications.
-TODO:
-  * Tests, tests and tests

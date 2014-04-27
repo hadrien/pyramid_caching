@@ -8,3 +8,6 @@ webtest
 yanc
 Paste
 PasteDeploy
+coveralls
+
+sqlalchemy

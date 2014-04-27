@@ -1,0 +1,9 @@
+[run]
+source =
+    example
+    pyramid_caching
+
+[report]
+omit =
+    */python?.?/*
+    */site-packages/nose/*
