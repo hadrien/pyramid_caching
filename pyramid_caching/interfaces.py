@@ -26,7 +26,7 @@ class IKeyVersioner(Interface):
         """
 
 
-class IModelVersioner(Interface):
+class IVersioner(Interface):
 
     def get_key(obj_or_cls):
         ""
@@ -49,8 +49,11 @@ class IModelVersioner(Interface):
 
 class IIdentityInspector(Interface):
 
-    def identify(obj_or_cls):
-        "Return a string that can be used to uniquely identify ``obj_or_cls``"
+    def identify(obj_or_cls, ids_dict=None):
+        """Return a string that can be used to uniquely identify ``obj_or_cls``
+        :param obj_or_cls: object or class to identify
+        :param ids_dict: a dict with id name as key and id value as value
+        """
 
 
 class IModelsChangedBatch(Interface):
@@ -81,3 +84,12 @@ class IModelChangesObserver(Interface):
 
     def on_model_changes(model_changes):
         "Triggered when models are added/changed/deleted"
+
+
+class ICacheClient(Interface):
+
+    def set(key, value):
+        pass
+
+    def get(key, value):
+        pass

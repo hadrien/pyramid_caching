@@ -1,30 +1,74 @@
 import inspect
+import logging
 
 from zope.interface import implementer
 
 from pyramid_caching.interfaces import (
     IIdentityInspector,
     IKeyVersioner,
-    IModelVersioner,
+    IVersioner,
     )
+
+log = logging.getLogger(__name__)
 
 
 def includeme(config):
     registry = config.registry
 
-    def identify(model_obj_or_cls):
-        return registry.queryAdapter(model_obj_or_cls, IIdentityInspector)
+    str_unicode_inspector = StrUnicodeIdentityInspector()
+
+    registry.registerAdapter(lambda _: str_unicode_inspector, required=[str],
+                             provided=IIdentityInspector)
+
+    registry.registerAdapter(lambda _: str_unicode_inspector,
+                             required=[unicode],
+                             provided=IIdentityInspector)
+
+    def identify(model_obj_or_cls, ids=None):
+        inspector = registry.queryAdapter(model_obj_or_cls, IIdentityInspector)
+        if inspector is None:
+            return None
+        return inspector.identify(model_obj_or_cls, ids)
+
+    tuple_inspector = TupleIdentityInspector(identify)
+
+    registry.registerAdapter(lambda _: tuple_inspector,
+                             required=[tuple],
+                             provided=IIdentityInspector)
 
     key_versioner = MemoryKeyVersioner()
 
-    model_versioner = ModelVersioner(key_versioner, identify)
+    versioner = Versioner(key_versioner, identify)
 
-    config.registry.registerUtility(model_versioner)
-    config.add_directive('get_model_versioner', get_model_versioner)
+    config.registry.registerUtility(versioner)
+    config.add_directive('get_versioner', get_versioner, action_wrap=False)
+    config.add_request_method(get_versioner, 'versioner', reify=True)
 
 
-def get_model_versioner(config):
-    return config.registry.getUtility(IModelVersioner)
+def get_versioner(config_or_request):
+    return config_or_request.registry.getUtility(IVersioner)
+
+
+@implementer(IIdentityInspector)
+class StrUnicodeIdentityInspector(object):
+
+    def identify(self, str_or_unicode, ids_dict=None):
+        if ids_dict is None:
+            return str_or_unicode
+
+        ids = ':'.join(['%s=%s' % (k, v) for (k, v) in ids_dict.iteritems()])
+
+        return '%s:%s' % (str_or_unicode, ids)
+
+
+@implementer(IIdentityInspector)
+class TupleIdentityInspector(object):
+
+    def __init__(self, identify):
+        self._identify = identify
+
+    def identify(self, tuple, ids_dict=None):
+        return self._identify(tuple[0], tuple[1])
 
 
 @implementer(IKeyVersioner)
@@ -39,10 +83,10 @@ class MemoryKeyVersioner(object):
         self.versions = dict()
 
     def _format(self, key):
-        return 'version.%s' % key
+        return 'version:%s' % key
 
     def get(self, key, default=0):
-        return self.versions.get(self._format(key), default)
+        return self.versions.setdefault(self._format(key), default)
 
     def get_multi(self, keys, default=0):
         return [self.get(key, default) for key in keys]
@@ -50,11 +94,12 @@ class MemoryKeyVersioner(object):
     def incr(self, key, start=0):
         k = self._format(key)
         version = self.versions.get(k, start) + 1
+        log.debug('incrementing to version=%s key=%s', version, key)
         self.versions[k] = version
 
 
-@implementer(IModelVersioner)
-class ModelVersioner(object):
+@implementer(IVersioner)
+class Versioner(object):
 
     def __init__(self, key_versioner, identify):
         self.key_versioner = key_versioner

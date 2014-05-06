@@ -28,5 +28,9 @@ class Base(unittest.TestCase):
         return self.config.registry
 
     @property
-    def model_versioner(self):
-        return self.config.get_model_versioner()
+    def versioner(self):
+        return self.config.get_versioner()
+
+    @property
+    def cache_client(self):
+        return self.config.get_cache_client()

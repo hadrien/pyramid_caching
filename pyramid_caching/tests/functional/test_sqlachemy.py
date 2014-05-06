@@ -2,16 +2,19 @@ from pyramid.decorator import reify
 from . import Base
 
 
-class TestSqlAlchemyExt(Base):
-
+class Test(Base):
     def setUp(self):
+        # creating app to setup sqla session.
         self.app
 
     def tearDown(self):
         from example.model import User
         for user in self.sqla_session.query(User).all():
             self.sqla_session.delete(user)
-        self.sqla_session.commit()
+        try:
+            self.sqla_session.commit()
+        except:  # pragma no cover
+            pass
 
     @reify
     def sqla_session(self):
@@ -25,13 +28,13 @@ class TestSqlAlchemyExt(Base):
         from example.model import User
         user = User()
 
-        key_cls_0 = self.model_versioner.get_key(User)
-        key_obj_0 = self.model_versioner.get_key(user)
+        key_cls_0 = self.versioner.get_key(User)
+        key_obj_0 = self.versioner.get_key(user)
 
-        self.model_versioner.incr(user)
+        self.versioner.incr(user)
 
-        key_cls_1 = self.model_versioner.get_key(User)
-        key_obj_1 = self.model_versioner.get_key(user)
+        key_cls_1 = self.versioner.get_key(User)
+        key_obj_1 = self.versioner.get_key(user)
 
         self.assertNotEqual(key_cls_1, key_cls_0)
         self.assertNotEqual(key_obj_1, key_obj_0)
@@ -47,8 +50,8 @@ class TestSqlAlchemyExt(Base):
         self.sqla_session.commit()
 
         self.assertNotEqual(
-            self.model_versioner.get_key(user0),
-            self.model_versioner.get_key(user1),
+            self.versioner.get_key(user0),
+            self.versioner.get_key(user1),
             )
 
     def test_unicity_composite_pk(self):
@@ -64,25 +67,65 @@ class TestSqlAlchemyExt(Base):
         self.sqla_session.commit()
 
         self.assertNotEqual(
-            self.model_versioner.get_key(msg0),
-            self.model_versioner.get_key(msg1),
+            self.versioner.get_key(msg0),
+            self.versioner.get_key(msg1),
             )
 
     def test_auto_incr(self):
         from example.model import User, UserNote
 
-        user = User(name=u'Bob')
+        # create user and user notes
+        user = User(id=1, name=u'Bob')
+        msg0 = UserNote(id=11, content='I ray')
+        msg1 = UserNote(id=22, content='Jah')
+        user.notes = [msg0, msg1]
 
         self.sqla_session.add(user)
 
         self.sqla_session.commit()
 
-        key_user_v0 = self.model_versioner.get_key(user)
+        key_user_v0 = self.versioner.get_key(user)
+        key_msg0_v0 = self.versioner.get_key(msg0)
+        key_msg1_v0 = self.versioner.get_key(msg1)
 
+        # modify user and msg0
         user.name = 'Bob Marley'
+        msg0.content = 'I RAY'
 
         self.sqla_session.commit()
 
-        key_user_v1 = self.model_versioner.get_key(user)
+        key_user_v1 = self.versioner.get_key(user)
+        key_msg0_v1 = self.versioner.get_key(msg0)
 
+        # keys are automaticaly changed
         self.assertNotEqual(key_user_v0, key_user_v1)
+        self.assertNotEqual(key_msg0_v0, key_msg0_v1)
+        # not msg1
+        self.assertEqual(key_msg1_v0, self.versioner.get_key(msg1))
+
+        # we can get a key via a new object instance
+        self.assertEqual(
+            key_msg0_v1,
+            self.versioner.get_key(UserNote(id=11, user_id=user.id)),
+            )
+
+        user = self.sqla_session.query(User).get(1)
+        # remove msg0
+        user.notes.pop(0)
+        user_id = user.id
+        self.sqla_session.commit()
+
+        # msg0 key has changed
+        key_msg0_v2 = self.versioner.get_key(UserNote(id=11,
+                                                   user_id=user_id))
+        self.assertNotEqual(key_msg0_v1, key_msg0_v2)
+
+        # delete user which cascade delete msg1
+        user = self.sqla_session.query(User).get(1)
+        self.sqla_session.delete(user)
+        self.sqla_session.commit()
+
+        self.assertNotEqual(key_user_v1,
+                            self.versioner.get_key(user))
+
+        self.assertNotEqual(key_msg1_v0, self.versioner.get_key(msg1))

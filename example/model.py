@@ -6,7 +6,6 @@ from sqlalchemy.orm import sessionmaker, relationship
 
 metadata = MetaData()
 
-Base = declarative_base(metadata=metadata)
 Session = sessionmaker()
 
 
@@ -20,6 +19,14 @@ def includeme(config):
     config.register_sqla_base_class(Base)
 
 
+class Base(declarative_base(metadata=metadata)):
+    __abstract__ = True
+
+    @classmethod
+    def get(cls, ids):
+        return Session().query(cls).get(ids)
+
+
 class User(Base):
 
     __tablename__ = 'user'
@@ -28,16 +35,23 @@ class User(Base):
 
     name = Column('name', String(32))
 
-    notes = relationship('UserNote', backref='user', cascade='delete')
+    notes = relationship('UserNote', backref='user',
+                         cascade='all, delete-orphan')
+
+    def __repr__(self):
+        return '<User id=%s>' % self.id
 
 
 class UserNote(Base):
 
     __tablename__ = 'user_note'
 
-    user_id = Column('user_id', ForeignKey('user.id'),
-                     primary_key=True)
-
     id = Column('id', Integer, primary_key=True, autoincrement=True)
 
+    user_id = Column('user_id', ForeignKey('user.id', ondelete='cascade'),
+                     primary_key=True)
+
     content = Column('name', Text())
+
+    def __repr__(self):
+        return '<UserNote id=%2s user_id=%s>' % (self.id, self.user_id)
