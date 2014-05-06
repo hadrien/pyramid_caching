@@ -18,6 +18,7 @@ Development
 * TODO:
 
   * A cache manager utility to keep track of cached function / metrics
+  * Ability to activate / deactivate cache
   * introspectables
   * Exceptions handling
   * Tests
