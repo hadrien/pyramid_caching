@@ -37,9 +37,11 @@ class IVersioner(Interface):
 
         .. code-block:: ipython
 
-            >> from myapp.model import MyModel
-            >> res = versionner.get_class_keys([MyModel])
-            >> res == ['myapp.model.MyModel.v_0']
+            >>> from pyramid_caching.versioners import Versioner
+            >>> from myapp.model import MyModel
+            >>> versioner = Versioner()
+            >>> res = versioner.get_class_keys([MyModel])
+            >>> res == ['myapp.model.MyModel.v_0']
 
         """
 
@@ -49,10 +51,9 @@ class IVersioner(Interface):
 
 class IIdentityInspector(Interface):
 
-    def identify(obj_or_cls, ids_dict=None):
+    def identify(obj_or_cls):
         """Return a string that can be used to uniquely identify ``obj_or_cls``
         :param obj_or_cls: object or class to identify
-        :param ids_dict: a dict with id name as key and id value as value
         """
 
 
@@ -93,3 +94,8 @@ class ICacheClient(Interface):
 
     def get(key, value):
         pass
+
+
+class ICacheManager(Interface):
+    pass
+
