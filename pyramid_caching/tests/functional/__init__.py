@@ -8,15 +8,22 @@ from pyramid.decorator import reify
 
 class Base(unittest.TestCase):
 
+    maxDiff = None
+
     @reify
     def config(self):
-        self.addCleanup(delattr, self, 'config')
+        self.addCleanup(self.cleanup)
         _config = Configurator(settings={
             'sqlalchemy.url': 'sqlite:///:memory:',
             })
         _config.include('example')
         _config.commit()
         return _config
+
+    def cleanup(self):
+        from pyramid_caching.cache import UndecorateEvent
+        self.config.registry.notify(UndecorateEvent())
+        delattr(self, 'config')
 
     @reify
     def app(self):

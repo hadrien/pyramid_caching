@@ -1,4 +1,3 @@
-
 from sqlalchemy import Column, Integer, String, MetaData, ForeignKey, Text
 from sqlalchemy.engine import engine_from_config
 from sqlalchemy.ext.declarative import declarative_base
@@ -17,6 +16,8 @@ def includeme(config):
 
     config.register_sqla_session_caching_hook(Session)
     config.register_sqla_base_class(Base)
+
+    config.scan(__name__)
 
 
 class Base(declarative_base(metadata=metadata)):

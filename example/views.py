@@ -35,3 +35,15 @@ def fibonacci(n):
         return 1
 
     return fibonacci(n - 1) + fibonacci(n - 2)
+
+
+@cache_basic()
+def ackermann(m, n):
+    if m > 0 and n == 0:
+        return ackermann(m - 1, 1)
+
+    if m > 0 and n > 0:
+        return ackermann(m - 1, ackermann(m, n - 1))
+
+    # m == 0:
+    return n + 1

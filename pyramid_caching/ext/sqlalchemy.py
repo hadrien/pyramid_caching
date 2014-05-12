@@ -31,11 +31,13 @@ def register_sqla_base_class(config, base_cls):
 
     identity_inspector = registry.getUtility(IIdentityInspector)
 
-    registry.registerAdapter(lambda _: identity_inspector, required=[base_cls],
+    def identify(model):
+        return identity_inspector.identify(model)
+
+    registry.registerAdapter(identify, required=[base_cls],
                              provided=IIdentityInspector)
 
-    registry.registerAdapter(lambda _: identity_inspector,
-                             required=[base_cls.__class__],
+    registry.registerAdapter(identify, required=[base_cls.__class__],
                              provided=IIdentityInspector)
 
 
@@ -65,30 +67,22 @@ def register_sqla_session_caching_hook(config, session_cls):
 @implementer(IIdentityInspector)
 class SqlAlchemyIdentityInspector(object):
 
-    def identify(self, obj_or_cls, ids_dict=None):
+    def identify(self, obj_or_cls):
         tablename = obj_or_cls.__tablename__
 
-        is_class = inspect.isclass(obj_or_cls)
-
-        if is_class and ids_dict is None:
+        if inspect.isclass(obj_or_cls):
             return tablename
 
         ids = ''
-        if ids_dict:
-            ids += ':'.join(['%s=%s' % (k, v)
-                             for k, v in ids_dict.iteritems()])
 
         # with a table user_message with a composite primary key user_id and id
         # an object user_message(user_id=123, id=456) will give:
         # 'user_message:user_id=123:id=456'
 
-        if not is_class:
         # TODO: if table has no primary keys :-/
-            table = obj_or_cls.__table__
+        table = obj_or_cls.__table__
 
-            ids += ':'.join(
-                ['%s=%s' % (col_name, getattr(obj_or_cls, col_name))
-                 for col_name in table.primary_key.columns.keys()]
-                )
+        ids += ':'.join(['%s=%s' % (col_name, getattr(obj_or_cls, col_name))
+                         for col_name in table.primary_key.columns.keys()])
 
-        return '%s:%s' % (tablename, ids)
+        return ':'.join([tablename, ids])

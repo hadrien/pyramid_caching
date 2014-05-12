@@ -15,26 +15,32 @@ log = logging.getLogger(__name__)
 def includeme(config):
     registry = config.registry
 
-    str_unicode_inspector = StrUnicodeIdentityInspector()
+    def identify(model_obj_or_cls):
+        return registry.queryAdapter(model_obj_or_cls, IIdentityInspector)
 
-    registry.registerAdapter(lambda _: str_unicode_inspector, required=[str],
+    registry.registerAdapter(lambda x: x, required=[str],
                              provided=IIdentityInspector)
 
-    registry.registerAdapter(lambda _: str_unicode_inspector,
-                             required=[unicode],
+    registry.registerAdapter(lambda x: str(x), required=[unicode],
                              provided=IIdentityInspector)
 
-    def identify(model_obj_or_cls, ids=None):
-        inspector = registry.queryAdapter(model_obj_or_cls, IIdentityInspector)
-        if inspector is None:
-            return None
-        return inspector.identify(model_obj_or_cls, ids)
-
-    tuple_inspector = TupleIdentityInspector(identify)
-
-    registry.registerAdapter(lambda _: tuple_inspector,
-                             required=[tuple],
+    registry.registerAdapter(lambda x: str(x), required=[int],
                              provided=IIdentityInspector)
+
+    registry.registerAdapter(lambda x: str(x), required=[float],
+                             provided=IIdentityInspector)
+
+    registry.registerAdapter(
+        lambda x: TupleIdentityInspector(identify).identify(x),
+        required=[tuple],
+        provided=IIdentityInspector,
+        )
+
+    registry.registerAdapter(
+        lambda x: DictIdentityInspector(identify).identify(x),
+        required=[dict],
+        provided=IIdentityInspector,
+        )
 
     key_versioner = MemoryKeyVersioner()
 
@@ -50,25 +56,25 @@ def get_versioner(config_or_request):
 
 
 @implementer(IIdentityInspector)
-class StrUnicodeIdentityInspector(object):
-
-    def identify(self, str_or_unicode, ids_dict=None):
-        if ids_dict is None:
-            return str_or_unicode
-
-        ids = ':'.join(['%s=%s' % (k, v) for (k, v) in ids_dict.iteritems()])
-
-        return '%s:%s' % (str_or_unicode, ids)
-
-
-@implementer(IIdentityInspector)
 class TupleIdentityInspector(object):
 
     def __init__(self, identify):
         self._identify = identify
 
-    def identify(self, tuple, ids_dict=None):
-        return self._identify(tuple[0], tuple[1])
+    def identify(self, tuple_or_list):
+        return ':'.join([self._identify(elem) for elem in tuple_or_list])
+
+
+@implementer(IIdentityInspector)
+class DictIdentityInspector(object):
+
+    def __init__(self, identify):
+        self._identify = identify
+
+    def identify(self, dict_like):
+        elems = ['%s=%s' % (self._identify(k), self._identify(v))
+                 for k, v in dict_like.iteritems()]
+        return ':'.join(elems)
 
 
 @implementer(IKeyVersioner)
@@ -105,13 +111,12 @@ class Versioner(object):
         self.key_versioner = key_versioner
         self.identify = identify
 
-    def get_key(self, obj_or_cls):
-        identity = self.identify(obj_or_cls)
+    def get_key(self, anything):
+        identity = self.identify(anything)
         return '%s:v=%s' % (identity, self.key_versioner.get(identity))
 
-    def get_multi_keys(self, objects_or_classes):
-        keys = [self.identify(obj_or_cls)
-                for obj_or_cls in objects_or_classes]
+    def get_multi_keys(self, things):
+        keys = [self.identify(anything) for anything in things]
 
         versions = self.key_versioner.get_multi(keys)
 

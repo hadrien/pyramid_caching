@@ -3,62 +3,83 @@ import inspect
 import venusian
 from zope.interface import implementer
 
-from pyramid_caching.interfaces import ICacheClient
+from pyramid_caching.interfaces import ICacheClient, ICacheManager
 
 
 def includeme(config):
-    config.add_directive('add_basic_cache', add_basic_cache)
-    config.add_directive('get_cache_client', get_cache_client,
-                         action_wrap=False)
-
     cache_client = MemoryCacheClient()
     config.registry.registerUtility(cache_client)
 
-    config.add_request_method(get_cache_client, 'cache_client', reify=True)
+    manager = Manager(config.get_versioner(), cache_client)
+    config.registry.registerUtility(manager)
+
+    config.add_directive('add_basic_cache', add_basic_cache)
+    config.add_directive('get_cache_client', get_cache_client,
+                         action_wrap=False)
+    config.add_directive('get_cache_manager', get_cache_manager,
+                         action_wrap=False)
+    config.add_request_method(get_cache_manager, 'cache_manager', reify=True)
     config.scan(__name__)
-
-
-@implementer(ICacheClient)
-class MemoryCacheClient(object):
-
-    def __init__(self):
-        self.cache = dict()
-
-    def get(self, key):
-        return self.cache.get(key)
-
-    def set(self, key, value):
-        self.cache[key] = value
 
 
 def get_cache_client(config_or_request):
     return config_or_request.registry.getUtility(ICacheClient)
 
 
+def get_cache_manager(config_or_request):
+    return config_or_request.registry.getUtility(ICacheManager)
+
+
 def add_basic_cache(config, name, wrapped, attach_info):
-    versioner = config.get_versioner()
-    cache_client = config.get_cache_client()
+    manager = config.get_cache_manager()
+    manager.add_basic_cache(config, name, wrapped, attach_info)
 
-    module = attach_info.module
 
-    args_spec = inspect.getargspec(wrapped)
+@implementer(ICacheManager)
+class Manager(object):
 
-    def cached_func(*args, **kwargs):
-        identities = ['%s=%s' % (varname, value)
-                      for (varname, value) in zip(args_spec.args, args)]
-        versionned_keys = versioner.get_multi_keys(identities)
+    def __init__(self, versioner, cache_client):
+        self.versioner = versioner
+        self.cache_client = cache_client
 
-        cache_key = '%s:%s' % (name, ':'.join(versionned_keys))
+    def add_basic_cache(self, config, name, wrapped, attach_info):
+        module = attach_info.module
 
-        result = cache_client.get(cache_key)
-        if not result:
-            result = wrapped(*args, **kwargs)
+        args_spec = inspect.getargspec(wrapped)
 
-            cache_client.set(cache_key, result)
+        def cached_func(*args, **kwargs):
+
+            def get_result():
+                return wrapped(*args, **kwargs)
+
+            prefixes = [wrapped.__module__, wrapped.__name__]
+            dependencies = [{k: v} for k, v in zip(args_spec.args, args)]
+
+            return self.get_or_cache(get_result, prefixes, dependencies)
+
+        def undecorate_me(event):
+            setattr(module, name, wrapped)
+
+        config.add_subscriber(undecorate_me, UndecorateEvent)
+
+        setattr(module, name, cached_func)
+
+    def get_or_cache(self, get_result, prefixes, dependencies):
+        versioned_keys = self.versioner.get_multi_keys(dependencies)
+
+        cache_key = ':'.join(prefixes + versioned_keys)
+
+        result = self.cache_client.get(cache_key)
+        if result is None:
+            result = get_result()
+
+            self.cache_client.set(cache_key, result)
 
         return result
 
-    setattr(module, name, cached_func)
+
+class UndecorateEvent(object):
+    pass
 
 
 class cache_basic(object):
@@ -90,10 +111,9 @@ class ViewCacheDecorator(object):
         self.depends_on = depends_on
 
     def __call__(self, context, request):
-        versioner = request.versioner
-        cache_client = request.cache_client
+        cache_manager = request.cache_manager
 
-        models = []
+        dependencies = []
         for cls, options in self.depends_on.iteritems():
 
             ids_dict = {}
@@ -101,20 +121,28 @@ class ViewCacheDecorator(object):
                 for match in options['matchdict']:
                     ids_dict.update({match: request.matchdict[match]})
 
-            models.append((cls, ids_dict))
+            dependencies.append((cls, ids_dict))
 
-        versionned_keys = versioner.get_multi_keys(models)
-        # XXX: add content_type in cache_key
-        cache_key = '%s:%s:%s' % (
-            self.view.__module__,
-            self.view.__name__,
-            ':'.join(versionned_keys)
-            )
-        result = cache_client.get(cache_key)
+        def get_result():
+            return self.view(context, request)
 
-        if result is None:
-            result = self.view(context, request)
+        prefixes = [self.view.__module__, self.view.__name__]
 
-            cache_client.set(cache_key, result)
+        accept_header = str(request.accept)
+        if accept_header:
+            prefixes.append(accept_header)
 
-        return result
+        return cache_manager.get_or_cache(get_result, prefixes, dependencies)
+
+
+@implementer(ICacheClient)
+class MemoryCacheClient(object):
+
+    def __init__(self):
+        self.cache = dict()
+
+    def get(self, key):
+        return self.cache.get(key)
+
+    def set(self, key, value):
+        self.cache[key] = value
