@@ -10,16 +10,22 @@ def includeme(config):
 
     client.connect()
 
-    config.add_cache_client(client)
+    config.add_cache_client(UMemcacheWrapper(client))
 
 
-class UmemcacheWrapper(object):
+class UMemcacheWrapper(object):
 
     def __init__(self, client):
         self.client = client
+
+    def add(self, key, value):
+        return self.client.add(key, value)
 
     def get(self, key):
         value = self.client.get(key)
         if isinstance(value, tuple):
             return value[0]
         return value
+
+    def flush_all(self):
+        self.client.flush_all()

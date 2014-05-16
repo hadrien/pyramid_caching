@@ -41,7 +41,7 @@ def get_cache_manager(config_or_request):
 
 
 def add_cache_client(config, client):
-    if not ICacheClient.implementedBy(client):
+    if not ICacheClient.implementedBy(client.__class__):
         log.debug('assuming %r implements %r', client.__class__, ICacheClient)
         classImplements(client.__class__, ICacheClient)
 
@@ -71,9 +71,7 @@ class Manager(object):
             result = get_result()
             self.cache_client.add(cache_key, self.serializer.serialize(result))
         else:
-            # XXX a wrapper around umemcache as it returns a tuple rather than
-            # the value itself.
-            result = self.serializer.deserialize(result[0])
+            result = self.serializer.deserialize(result)
 
         return result
 
