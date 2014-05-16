@@ -1,7 +1,7 @@
 from pyramid.view import view_config
 from pyramid.httpexceptions import HTTPNotFound
 
-from pyramid_caching.cache import cache_basic, cache_factory
+from pyramid_caching.cache import cache_factory
 
 from example.model import User
 
@@ -15,7 +15,7 @@ def includeme(config):
     route_name='user',
     renderer='json',
     request_method='GET',
-    decorator=cache_factory(depends_on=({User: {'matchdict': ['user_id']}})),
+    decorator=cache_factory(depends_on={User: {'matchdict': ['user_id']}}),
     )
 def get_user(request):
     user = User.get(request.matchdict['user_id'])
@@ -25,25 +25,3 @@ def get_user(request):
         'id': user.id,
         'name': user.name,
     }
-
-
-@cache_basic()
-def fibonacci(n):
-    if n == 0:
-        return 0
-    if n == 1:
-        return 1
-
-    return fibonacci(n - 1) + fibonacci(n - 2)
-
-
-@cache_basic()
-def ackermann(m, n):
-    if m > 0 and n == 0:
-        return ackermann(m - 1, 1)
-
-    if m > 0 and n > 0:
-        return ackermann(m - 1, ackermann(m, n - 1))
-
-    # m == 0:
-    return n + 1

@@ -57,45 +57,31 @@ class IIdentityInspector(Interface):
         """
 
 
-class IModelsChangedBatch(Interface):
-
-    new = Attribute("Set of model instances added to persistence layer")
-
-    changed = Attribute("Set of model instances modified")
-
-    deleted = Attribute("Set of model instances deleted")
-
-
-class IModelAdded(Interface):
-
-    model = Attribute("Model added")
-
-
-class IModelChanged(Interface):
-
-    model = Attribute("Model added")
-
-
-class IModelDeleted(Interface):
-
-    model = Attribute("Model deleted")
-
-
-class IModelChangesObserver(Interface):
-
-    def on_model_changes(model_changes):
-        "Triggered when models are added/changed/deleted"
-
-
 class ICacheClient(Interface):
 
-    def set(key, value):
+    def add(key, obj):
         pass
 
-    def get(key, value):
+    def get(key):
+        pass
+
+    def get_multi(keys):
+        pass
+
+    def incr(key):
         pass
 
 
 class ICacheManager(Interface):
     pass
 
+
+class ISerializer(Interface):
+
+    name = Attribute('unique name registered for the serializer')
+
+    def serialize(obj):
+        pass
+
+    def deserialize(data):
+        pass

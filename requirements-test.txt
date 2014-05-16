@@ -11,3 +11,4 @@ PasteDeploy
 coveralls
 
 sqlalchemy
+umemcache

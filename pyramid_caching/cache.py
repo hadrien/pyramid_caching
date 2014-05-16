@@ -1,25 +1,35 @@
-import inspect
+import logging
 
-import venusian
-from zope.interface import implementer
+from zope.interface import implementer, classImplements
 
-from pyramid_caching.interfaces import ICacheClient, ICacheManager
+from pyramid_caching.interfaces import (
+    ICacheClient,
+    ICacheManager,
+    )
+
+log = logging.getLogger(__name__)
 
 
 def includeme(config):
-    cache_client = MemoryCacheClient()
-    config.registry.registerUtility(cache_client)
-
-    manager = Manager(config.get_versioner(), cache_client)
-    config.registry.registerUtility(manager)
-
-    config.add_directive('add_basic_cache', add_basic_cache)
     config.add_directive('get_cache_client', get_cache_client,
                          action_wrap=False)
+
     config.add_directive('get_cache_manager', get_cache_manager,
                          action_wrap=False)
+
+    config.add_directive('add_cache_client', add_cache_client)
+
     config.add_request_method(get_cache_manager, 'cache_manager', reify=True)
-    config.scan(__name__)
+
+    def register():
+        cache_client = config.get_cache_client()
+        versioner = config.get_versioner()
+        serializer = config.get_serializer()
+        manager = Manager(versioner, cache_client, serializer)
+        config.registry.registerUtility(manager)
+        log.debug('registering cache manager %r', manager)
+
+    config.action((__name__, 'cache_manager'), register, order=1)
 
 
 def get_cache_client(config_or_request):
@@ -30,39 +40,25 @@ def get_cache_manager(config_or_request):
     return config_or_request.registry.getUtility(ICacheManager)
 
 
-def add_basic_cache(config, name, wrapped, attach_info):
-    manager = config.get_cache_manager()
-    manager.add_basic_cache(config, name, wrapped, attach_info)
+def add_cache_client(config, client):
+    if not ICacheClient.implementedBy(client):
+        log.debug('assuming %r implements %r', client.__class__, ICacheClient)
+        classImplements(client.__class__, ICacheClient)
+
+    def register():
+        log.debug('registering cache client %r', client)
+        config.registry.registerUtility(client, ICacheClient)
+
+    config.action((__name__, 'cache_client'), register, order=0)
 
 
 @implementer(ICacheManager)
 class Manager(object):
 
-    def __init__(self, versioner, cache_client):
+    def __init__(self, versioner, cache_client, serializer):
         self.versioner = versioner
         self.cache_client = cache_client
-
-    def add_basic_cache(self, config, name, wrapped, attach_info):
-        module = attach_info.module
-
-        args_spec = inspect.getargspec(wrapped)
-
-        def cached_func(*args, **kwargs):
-
-            def get_result():
-                return wrapped(*args, **kwargs)
-
-            prefixes = [wrapped.__module__, wrapped.__name__]
-            dependencies = [{k: v} for k, v in zip(args_spec.args, args)]
-
-            return self.get_or_cache(get_result, prefixes, dependencies)
-
-        def undecorate_me(event):
-            setattr(module, name, wrapped)
-
-        config.add_subscriber(undecorate_me, UndecorateEvent)
-
-        setattr(module, name, cached_func)
+        self.serializer = serializer
 
     def get_or_cache(self, get_result, prefixes, dependencies):
         versioned_keys = self.versioner.get_multi_keys(dependencies)
@@ -70,29 +66,16 @@ class Manager(object):
         cache_key = ':'.join(prefixes + versioned_keys)
 
         result = self.cache_client.get(cache_key)
+
         if result is None:
             result = get_result()
-
-            self.cache_client.set(cache_key, result)
+            self.cache_client.add(cache_key, self.serializer.serialize(result))
+        else:
+            # XXX a wrapper around umemcache as it returns a tuple rather than
+            # the value itself.
+            result = self.serializer.deserialize(result[0])
 
         return result
-
-
-class UndecorateEvent(object):
-    pass
-
-
-class cache_basic(object):
-
-    def __call__(self, wrapped):
-
-        def callback(context, name, wrapped):
-            config = context.config.with_package(info.module)
-            config.add_basic_cache(name, wrapped, info, **settings)
-
-        info = venusian.attach(wrapped, callback)
-        settings = {'_info': info.codeinfo}
-        return wrapped
 
 
 class cache_factory(object):
@@ -128,21 +111,4 @@ class ViewCacheDecorator(object):
 
         prefixes = [self.view.__module__, self.view.__name__]
 
-        accept_header = str(request.accept)
-        if accept_header:
-            prefixes.append(accept_header)
-
         return cache_manager.get_or_cache(get_result, prefixes, dependencies)
-
-
-@implementer(ICacheClient)
-class MemoryCacheClient(object):
-
-    def __init__(self):
-        self.cache = dict()
-
-    def get(self, key):
-        return self.cache.get(key)
-
-    def set(self, key, value):
-        self.cache[key] = value

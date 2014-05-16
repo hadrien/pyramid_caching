@@ -11,15 +11,16 @@ Development
 * Add an example application with dummy sqla model to run tests against
 * Add an sqla specific extention with hook on session events to get model
   modifications.
-* Add `cache_basic` decorator to cache basic function with primitive typed
-  argument.
+* Add and remove `cache_basic` decorator to cache basic function with primitive
+  typed argument. Let's focus at view level. We'll do basic decoraor later.
 * Add `cache_factory` to construct a decorator to pass to `config.add_view`
   method.
+* Add a cache manager which plug all components.
+* Add serializers to adapt objects to store on cache
 * TODO:
-
-  * A cache manager utility to keep track of cached function / metrics
   * Ability to activate / deactivate cache
   * introspectables
   * Exceptions handling
   * Tests
   * Cleanups
+  * Content negociation: we should add content type in cache key.
