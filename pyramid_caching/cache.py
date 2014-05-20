@@ -58,7 +58,8 @@ class Manager(object):
     def __init__(self, versioner, cache_client, serializer):
         self.versioner = versioner
         self.cache_client = cache_client
-        self.serializer = serializer
+        self.serialize = serializer.serialize
+        self.deserialize = serializer.deserialize
 
     def get_or_cache(self, get_result, prefixes, dependencies):
         versioned_keys = self.versioner.get_multi_keys(dependencies)
@@ -69,9 +70,9 @@ class Manager(object):
 
         if result is None:
             result = get_result()
-            self.cache_client.add(cache_key, self.serializer.serialize(result))
+            self.cache_client.add(cache_key, self.serialize(result))
         else:
-            result = self.serializer.deserialize(result)
+            result = self.deserialize(result)
 
         return result
 
