@@ -77,6 +77,13 @@ class ICacheManager(Interface):
 
 
 class ISerializer(Interface):
+    def dumps(obj):
+        """Return a flat binary representation of the object."""
+
+    def loads(data):
+        """Returns an instance of the object stored in the binary data."""
+
+class ISerializationAdapter(Interface):
 
     name = Attribute('unique name registered for the serializer')
 
