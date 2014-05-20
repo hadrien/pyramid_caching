@@ -56,6 +56,7 @@ def add_cache_client(config, client):
 class Manager(object):
 
     def __init__(self, versioner, cache_client, serializer):
+        # XXX we need a notify method (registry.notify)
         self.versioner = versioner
         self.cache_client = cache_client
         self.serialize = serializer.serialize
@@ -68,6 +69,7 @@ class Manager(object):
 
         result = self.cache_client.get(cache_key)
 
+        # XXX notify hit and miss events
         if result is None:
             result = get_result()
             self.cache_client.add(cache_key, self.serialize(result))
@@ -99,6 +101,7 @@ class ViewCacheDecorator(object):
         for cls, options in self.depends_on.iteritems():
 
             ids_dict = {}
+            # XXX we'll add other options to get ids from.
             if 'matchdict' in options:
                 for match in options['matchdict']:
                     ids_dict.update({match: request.matchdict[match]})
