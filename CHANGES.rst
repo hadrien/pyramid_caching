@@ -16,9 +16,11 @@ Development
 * Add `cache_factory` to construct a decorator to pass to `config.add_view`
   method.
 * Add a cache manager which plug all components.
-* Add serializers to adapt objects to store on cache
-* Serializer objects follow a standard `loads`/`dumps` interface.
+* Add serializers to adapt objects to store on cache. Serializer objects follow
+  a standard `loads`/`dumps` interface.
 * Add Redis client for caching and versioning
+* The cache manager emits CacheHit and CacheMiss events. These events can be
+  forwarded to a statistics aggregator by using the pyramid_metrics extension.
 * TODO:
   * Ability to activate / deactivate cache
   * introspectables

@@ -5,6 +5,7 @@ import unittest
 from pyramid import testing
 
 from pyramid_caching.serializers import (
+    PICKLE_PROTOCOL,
     SerializerUtility,
     SERIALIZER_META_VERSION,
     )
@@ -55,7 +56,7 @@ class TestSerializers(unittest.TestCase):
                      meta_version=SERIALIZER_META_VERSION,
                      payload="OBJECT"):
         f = StringIO()
-        pickler = pickle.Pickler(f, 1)
+        pickler = pickle.Pickler(f, PICKLE_PROTOCOL)
         meta = {
             'type': meta_type,
             'version': meta_version,

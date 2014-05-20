@@ -85,6 +85,7 @@ class ISerializer(Interface):
     def loads(data):
         """Returns an instance of the object stored in the binary data."""
 
+
 class ISerializationAdapter(Interface):
 
     name = Attribute('unique name registered for the serializer')
@@ -94,3 +95,13 @@ class ISerializationAdapter(Interface):
 
     def deserialize(data):
         pass
+
+
+class ICacheHit(Interface):
+    key_prefix = Attribute("The invariant part or the cache key")
+    request = Attribute("The request object")
+
+
+class ICacheMiss(Interface):
+    key_prefix = Attribute("The invariant part or the cache key")
+    request = Attribute("The request object")

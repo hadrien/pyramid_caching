@@ -7,6 +7,7 @@ from zope.interface import implementer
 from pyramid_caching.interfaces import ISerializer, ISerializationAdapter
 
 SERIALIZER_META_VERSION = 1
+PICKLE_PROTOCOL = 2
 
 
 def includeme(config):
@@ -20,8 +21,8 @@ def includeme(config):
     config.add_directive('get_serializer', get_serializer, action_wrap=False)
 
 
-def get_serializer(config_or_request):
-    return config_or_request.registry.getUtility(ISerializer)
+def get_serializer(config):
+    return config.registry.getUtility(ISerializer)
 
 
 class DeserializationError(Exception):
@@ -50,15 +51,14 @@ class SerializerUtility(object):
         if adapter is None:
             adapter = self.registry.queryAdapter(obj, ISerializationAdapter)
         f = StringIO()
-        protocol = 1
-        p = pickle.Pickler(f, protocol)
+        pickler = pickle.Pickler(f, PICKLE_PROTOCOL)
         meta = {
             'type': adapter.name,
             'version': SERIALIZER_META_VERSION,
             }
         payload = adapter.serialize(obj)
-        p.dump(meta)
-        p.dump(payload)
+        pickler.dump(meta)
+        pickler.dump(payload)
         return f.getvalue()
 
     def loads(self, data):
