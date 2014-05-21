@@ -17,7 +17,7 @@ Development
   method.
 * Add a cache manager which plug all components.
 * Add serializers to adapt objects to store on cache
-* A quick wrapper around ``umemcache.Client``
+* Add Redis client for caching and versioning
 * TODO:
   * Ability to activate / deactivate cache
   * introspectables
