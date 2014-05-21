@@ -42,26 +42,31 @@ def register_sqla_base_class(config, base_cls):
 
 
 def register_sqla_session_caching_hook(config, session_cls):
-    versioner = config.get_versioner()
+    def register():
+        versioner = config.get_versioner()
 
-    def on_before_commit(session):
-        dirty = session.dirty
-        deleted = session.deleted
+        def on_before_commit(session):
+            dirty = session.dirty
+            deleted = session.deleted
 
-        def incr_models(session):
-            # XXX: should increment only cacheable models
-            log.debug('incrementing dirty=%s deleted=%s', dirty, deleted)
+            def incr_models(session):
+                # XXX: should increment only cacheable models
+                log.debug('incrementing dirty=%s deleted=%s', dirty, deleted)
 
-            for model in dirty:
-                versioner.incr(model)
+                for model in dirty:
+                    versioner.incr(model)
 
-            for model in deleted:
-                versioner.incr(model)
+                for model in deleted:
+                    versioner.incr(model)
 
-        if dirty or deleted:
-            event.listen(session, 'after_commit', incr_models)
+            if dirty or deleted:
+                event.listen(session, 'after_commit', incr_models)
 
-    event.listen(session_cls, 'before_commit', on_before_commit)
+        event.listen(session_cls, 'before_commit', on_before_commit)
+
+    config.action((__name__, 'session_caching_hook'), register, order=3)
+
+
 
 
 @implementer(IIdentityInspector)
