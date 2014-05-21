@@ -104,3 +104,13 @@ class TestSerializers(unittest.TestCase):
         data = pickle.dumps(data, protocol=PICKLE_PROTOCOL)
         with self.assertRaises(DeserializationError):
             utility.loads(data)
+
+    def test_missing_serializer(self):
+        from pyramid_caching.serializers import SerializationError
+        utility = SerializerUtility(self.config.registry)
+
+        class UnknownType:
+            pass
+
+        with self.assertRaises(SerializationError):
+            utility.dumps(UnknownType())

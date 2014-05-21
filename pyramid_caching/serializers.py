@@ -2,8 +2,9 @@ import cPickle as pickle
 from cStringIO import StringIO
 
 from pyramid.response import Response
-from zope.interface import implementer
+from zope.interface import implementer, providedBy
 
+from pyramid_caching.exc import SerializationError, DeserializationError
 from pyramid_caching.interfaces import ISerializer, ISerializationAdapter
 
 SERIALIZER_META_VERSION = 1
@@ -23,10 +24,6 @@ def includeme(config):
 
 def get_serializer(config_or_request):
     return config_or_request.registry.getUtility(ISerializer)
-
-
-class DeserializationError(Exception):
-    """An error that occurs when valid cached data could not be decoded."""
 
 
 @implementer(ISerializer)
@@ -50,6 +47,9 @@ class SerializerUtility(object):
     def dumps(self, obj, adapter=None):
         if adapter is None:
             adapter = self.registry.queryAdapter(obj, ISerializationAdapter)
+            if adapter is None:
+                raise SerializationError(
+                    "No encoder registered for %s" % providedBy(obj).__name__)
         meta = {
             'type': adapter.name,
             'version': SERIALIZER_META_VERSION,
