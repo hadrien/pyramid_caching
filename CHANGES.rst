@@ -18,6 +18,7 @@ Development
 * Add a cache manager which plug all components.
 * Add serializers to adapt objects to store on cache
 * A quick wrapper around ``umemcache.Client``
+* Serializer objects follow a standard `loads`/`dumps` interface.
 * TODO:
   * Ability to activate / deactivate cache
   * introspectables
