@@ -11,7 +11,9 @@ PasteDeploy
 coveralls
 
 sqlalchemy
-umemcache
+
+redis
+hiredis
 
 ipdb
 ipdbplugin
