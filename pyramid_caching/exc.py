@@ -1,6 +1,10 @@
 
-class CacheError(Exception):
+
+class Base(Exception):
+    """Base exception for pyramid_caching"""
+
+class CacheError(Base):
     """Base exception for cache client"""
 
 class CacheKeyAlreadyExists(CacheError):
-    pass
+    """Trying to create an existing key in cache"""
