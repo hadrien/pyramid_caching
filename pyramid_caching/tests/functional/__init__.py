@@ -8,7 +8,8 @@ from pyramid.decorator import reify
 
 
 def setupPackage():
-    os.environ['MEMCACHE_URI'] = '127.0.0.1:11211'
+    os.environ['CACHE_STORE_REDIS_URI'] = 'redis://127.0.0.1:6379/5'
+    os.environ['VERSION_STORE_REDIS_URI'] = 'redis://127.0.0.1:6379/8'
 
 
 class Base(unittest.TestCase):

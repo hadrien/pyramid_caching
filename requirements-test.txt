@@ -11,4 +11,6 @@ PasteDeploy
 coveralls
 
 sqlalchemy
-umemcache
+
+redis
+fakeredis
