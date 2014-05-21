@@ -5,10 +5,11 @@ from nose_parameterized import parameterized
 from zope.interface import implementer
 
 from pyramid_caching.interfaces import IIdentityInspector
-from pyramid_caching.versioners import (
-    MemoryKeyVersioner,
-    Versioner,
-)
+from pyramid_caching.versioners import Versioner
+
+from pyramid_caching.ext.redis import RedisVersionWrapper
+
+from fakeredis import FakeStrictRedis
 
 
 class BasicModel(object):
@@ -37,7 +38,8 @@ def get_basic():
     def instantiate_model():
         return BasicModel()
 
-    key_versioner = MemoryKeyVersioner()
+    key_versioner = RedisVersionWrapper(FakeStrictRedis())
+
     id_inspector = BasicModelIdentityInspector()
     versioner = Versioner(key_versioner, id_inspector.identify)
     return key_versioner, versioner, instantiate_model, BasicModel

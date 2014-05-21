@@ -6,5 +6,6 @@ setup(
     test_suite="nose.collector",
     extras_require={
         'umemcache': ['umemcache'],
+        'redis': ['redis', 'hiredis'],
     },
 )
