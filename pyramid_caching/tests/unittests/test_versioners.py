@@ -5,7 +5,7 @@ from nose_parameterized import parameterized
 from zope.interface import implementer
 
 from pyramid_caching.interfaces import IIdentityInspector
-from pyramid_caching.versioners import Versioner
+from pyramid_caching.versioner import Versioner
 
 from pyramid_caching.ext.redis import RedisVersionWrapper
 

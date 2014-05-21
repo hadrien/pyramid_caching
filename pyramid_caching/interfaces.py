@@ -45,7 +45,7 @@ class IVersioner(Interface):
 
         .. code-block:: ipython
 
-            >>> from pyramid_caching.versioners import Versioner
+            >>> from pyramid_caching.versioner import Versioner
             >>> from myapp.model import MyModel
             >>> versioner = Versioner()
             >>> res = versioner.get_class_keys([MyModel])
