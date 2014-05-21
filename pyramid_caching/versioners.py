@@ -5,7 +5,6 @@ from zope.interface import implementer
 
 from pyramid_caching.interfaces import (
     IIdentityInspector,
-    IKeyVersioner,
     IVersioner,
     )
 
@@ -42,13 +41,16 @@ def includeme(config):
         provided=IIdentityInspector,
         )
 
-    key_versioner = MemoryKeyVersioner()
-
-    versioner = Versioner(key_versioner, identify)
-
-    config.registry.registerUtility(versioner)
     config.add_directive('get_versioner', get_versioner, action_wrap=False)
     config.add_request_method(get_versioner, 'versioner', reify=True)
+
+    def register():
+        key_versioner = config.get_key_version_client()
+        versioner = Versioner(key_versioner, identify)
+        config.registry.registerUtility(versioner)
+        log.debug('registering versioner %r', versioner)
+
+    config.action((__name__, 'versioner'), register, order=1)
 
 
 def get_versioner(config_or_request):
@@ -75,33 +77,6 @@ class DictIdentityInspector(object):
         elems = ['%s=%s' % (self._identify(k), self._identify(v))
                  for k, v in dict_like.iteritems()]
         return ':'.join(elems)
-
-
-@implementer(IKeyVersioner)
-class MemoryKeyVersioner(object):
-    """Highly inefficient in-memory key store as a proof of concept.
-    It can be used in tests.
-
-    Do not use in production.
-    """
-
-    def __init__(self):
-        self.versions = dict()
-
-    def _format(self, key):
-        return 'version:%s' % key
-
-    def get(self, key, default=0):
-        return self.versions.setdefault(self._format(key), default)
-
-    def get_multi(self, keys, default=0):
-        return [self.get(key, default) for key in keys]
-
-    def incr(self, key, start=0):
-        k = self._format(key)
-        version = self.versions.get(k, start) + 1
-        log.debug('incrementing to version=%s key=%s', version, key)
-        self.versions[k] = version
 
 
 @implementer(IVersioner)
