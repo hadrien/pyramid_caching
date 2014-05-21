@@ -7,6 +7,7 @@ from zope.interface import implementer
 from pyramid_caching.interfaces import ISerializer, ISerializationAdapter
 
 SERIALIZER_META_VERSION = 1
+PICKLE_PROTOCOL = 2
 
 
 def includeme(config):
@@ -49,32 +50,24 @@ class SerializerUtility(object):
     def dumps(self, obj, adapter=None):
         if adapter is None:
             adapter = self.registry.queryAdapter(obj, ISerializationAdapter)
-        f = StringIO()
-        protocol = 1
-        p = pickle.Pickler(f, protocol)
         meta = {
             'type': adapter.name,
             'version': SERIALIZER_META_VERSION,
+            'payload': adapter.serialize(obj),
             }
-        payload = adapter.serialize(obj)
-        p.dump(meta)
-        p.dump(payload)
-        return f.getvalue()
+        return pickle.dumps(meta, protocol=PICKLE_PROTOCOL)
 
     def loads(self, data):
-        f = StringIO(data)
-        unpickler = pickle.Unpickler(f)
-        meta = unpickler.load()
-        if 'version' not in meta or meta['version'] != SERIALIZER_META_VERSION:
+        data = pickle.loads(data)
+        if 'version' not in data or data['version'] != SERIALIZER_META_VERSION:
             return None
         adapter = self.registry.queryAdapter(None,
                                              ISerializationAdapter,
-                                             name=meta['type'])
+                                             name=data['type'])
         if adapter is None:
             raise DeserializationError("No decoder registered for type=%s",
-                                       meta['type'])
-        payload = unpickler.load()
-        return adapter.deserialize(payload)
+                                       data['type'])
+        return adapter.deserialize(data['payload'])
 
 
 @implementer(ISerializationAdapter)
