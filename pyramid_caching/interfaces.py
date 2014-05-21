@@ -2,27 +2,35 @@ from zope.interface import Interface, Attribute
 
 
 class IKeyVersioner(Interface):
+    """
+    Notes about the default values:
 
-    def get(key, default=0):
+    There is two default values :
+    - the return value of get()/get_multi() when the version doesn't exist
+    - the stored version after an incr() operation
+
+    Those default values are implementation specific and MUST be equivalent.
+
+    See Redis implementation.
+    """
+
+    def get(key):
         """Get a key's version.
 
-        If found, key's version is returned, else ``default``.
+        If found, key's version is returned, else a default value. Defaults is
+        implementation specific.
         """
 
-    def get_multi(keys, default=0):
+    def get_multi(keys):
         """Get versions for a list of keys.
 
-        If found, a dict containing keys with their corresponding versions
-        is returned, else the keys versions are initialized to ``default``
-        i.e., {'key': 0, ...}.
-
-        Prefix 'ver_' is added to each input key for Memcache
-        query, however prefix is removed before returning results.
+        Return a list of corresponding versions. Defaults is implementation
+        specific.
         """
 
-    def incr(key, start=0):
-        """Increment an existing key version or add a new version starting at
-        ``start``.
+    def incr(key):
+        """Increment an existing key version. Defaults is implementation
+        specific.
         """
 
 
@@ -63,12 +71,6 @@ class ICacheClient(Interface):
         pass
 
     def get(key):
-        pass
-
-    def get_multi(keys):
-        pass
-
-    def incr(key):
         pass
 
 
