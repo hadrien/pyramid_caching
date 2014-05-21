@@ -29,7 +29,7 @@ def includeme(config):
         config.registry.registerUtility(manager)
         log.debug('registering cache manager %r', manager)
 
-    config.action((__name__, 'cache_manager'), register, order=1)
+    config.action((__name__, 'cache_manager'), register, order=2)
 
 
 def get_cache_client(config_or_request):
