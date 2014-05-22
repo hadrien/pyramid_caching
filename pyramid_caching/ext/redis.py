@@ -5,12 +5,14 @@ import time
 
 from redis import StrictRedis, RedisError
 
-from pyramid_caching.exc import (CacheKeyAlreadyExists,
-                                 CacheAddFailure,
-                                 CacheGetFailure,
-                                 VersionGetFailure,
-                                 VersionMasterVersionFailure,
-                                 VersionIncrementFailure)
+from pyramid_caching.exc import (
+    CacheKeyAlreadyExists,
+    CacheAddFailure,
+    CacheGetFailure,
+    VersionGetFailure,
+    VersionMasterVersionFailure,
+    VersionIncrementFailure
+)
 
 
 def includeme(config):

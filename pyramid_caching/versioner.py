@@ -89,9 +89,9 @@ class Versioner(object):
     def get_multi_keys(self, things):
         keys = [self.identify(anything) for anything in things]
 
-        versiontuple = self.key_versioner.get_multi(keys)
+        versiontuples = self.key_versioner.get_multi(keys)
 
-        return ['%s:v=%s' % (key, version) for (key, version) in versiontuple]
+        return ['%s:v=%s' % (key, version) for (key, version) in versiontuples]
 
     def incr(self, obj_or_cls, start=0):
         self.key_versioner.incr(self.identify(obj_or_cls))
