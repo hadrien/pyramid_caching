@@ -1,10 +1,17 @@
 from __future__ import absolute_import
 
 import os
+import time
 
-from redis import StrictRedis
+from redis import StrictRedis, RedisError
 
-from pyramid_caching.exc import (CacheError, CacheKeyAlreadyExists)
+from pyramid_caching.exc import (CacheKeyAlreadyExists,
+                                 CacheAddFailure,
+                                 CacheGetFailure,
+                                 VersionGetFailure,
+                                 VersionMasterVersionFailure,
+                                 VersionIncrementFailure)
+
 
 def includeme(config):
     include_cache_store(config)
@@ -28,20 +35,27 @@ class RedisCacheWrapper(object):
         self.client = client
 
     def add(self, key, value, expiration=None):
-        """
-        Note: Redis will only LRU evince volatile keys.
+        """Create a cache entry. Raise CacheKeyAlreadyExists is this entry
+        already exists.
 
-        Default expiration: 7 days
+        Note: Redis will only LRU evince volatile keys. (Default: 7 days)
         """
         if expiration is None:
             expiration = self.default_expiration
 
-        rvalue = self.client.set(key, value, ex=expiration, nx=True)
+        try:
+            rvalue = self.client.set(key, value, ex=expiration, nx=True)
+        except RedisError as error:
+            raise CacheAddFailure(error)
+
         if rvalue is None:
             raise CacheKeyAlreadyExists(key)
 
     def get(self, key):
-        return self.client.get(key)
+        try:
+            return self.client.get(key)
+        except RedisError as error:
+            raise CacheGetFailure(error)
 
     def flush_all(self):
         self.client.flushall()
@@ -58,21 +72,75 @@ class RedisVersionWrapper(object):
     See `Redis documentation for INCR <http://redis.io/commands/incr>`_
 
     Note: the return value are always string type.
+
+    Notes about the Consistency and master-version:
+
+    To ensure cache data consistency the model versioning must be consistent,
+    thus a single failed model version increment would result in stale cache.
+
+    To achieve consistent model versioning we must protect against two
+    situations:
+
+    - Glitch / temporary unavailability
+
+    The model version increment operation raises VersionIncrementFailure
+    exception is raised. In this case the write operation must be rollback.
+
+    - Permanent loss of the version-store (and recovery with an empty one)
+
+    The master-version is used together with dependency versions. If missing,
+    this master-version is initialized to a new value. When a new empty
+    version-store is reacheable, the master-version ends up being different
+    than the previous one, hence effectively invalidating the whole cache.
     """
+
+    MASTER_VERSION_KEY = 'cache'
 
     def __init__(self, client):
         self.client = client
 
-    def get(self, key):
-        value = self.client.get(key)
-        return value if value is not None else '0'
+    def _get_master_version(self):
+        """Return the master-version or None if the key is missing"""
+        return self.client.get(self.MASTER_VERSION_KEY)
+
+    def _generate_master_version(self):
+        return int(time.time())
+
+    def _set_master_version(self):
+        """The set operation will silently fail if the key already exists.
+        Thus we don't know what is the value of the stored master-version"""
+
+        self.client.set(self.MASTER_VERSION_KEY,
+                        self._generate_master_version(),
+                        nx=True)
 
     def get_multi(self, keys):
-        return [v if v is not None else '0'
-                for v in self.client.mget(keys)]
+        """Return an ordered list of tuple (key, value). The value default to 0
+        """
+        keys_with_master = [self.MASTER_VERSION_KEY] + keys
+
+        try:
+            versions = self.client.mget(keys_with_master)
+        except RedisError as error:
+            raise VersionGetFailure(error)
+
+        try:
+            if versions[0] is None:
+                self._set_master_version()
+                versions[0] = self._get_master_version()
+        except RedisError as error:
+            raise VersionMasterVersionFailure(error)
+
+        versions = [v if v is not None else '0' for v in versions]
+
+        return zip(keys_with_master, versions)
 
     def incr(self, key):
-        self.client.incr(key)
+        """Increment a version. If the key was missing, the new value is 1"""
+        try:
+            self.client.incr(key)
+        except RedisError as error:
+            raise VersionIncrementFailure(error)
 
     def flush_all(self):
         self.client.flushall()
