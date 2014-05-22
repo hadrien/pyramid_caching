@@ -30,22 +30,6 @@ class TestKeyVersioner(unittest.TestCase):
         self.assertTrue(verifyObject(IKeyVersioner, key_versioner))
 
     @parameterized.expand(KEY_VERSIONERS)
-    def test_get(self, name, get_key_versioner, default_value):
-        key_versioner = get_key_versioner()
-
-
-        self.assertEqual(key_versioner.get('FOO'), default_value)
-
-        self.assertEqual(key_versioner.get('FOO'), default_value)
-
-        for _ in range(int(self.TEST_VALUE)):
-            key_versioner.incr('FOO')
-
-        self.assertEqual(key_versioner.get('FOO'), self.TEST_VALUE)
-
-        self.assertEqual(key_versioner.get('FOO'), self.TEST_VALUE)
-
-    @parameterized.expand(KEY_VERSIONERS)
     def test_get_multi(self, name, get_key_versioner, default_value):
         key_versioner = get_key_versioner()
 

@@ -80,13 +80,13 @@ class TestBasic(unittest.TestCase):
 
         model1 = model_factory()
 
-        key_cls_v0 = versioner.get_key(model_cls)
-        key_id1_v0 = versioner.get_key(model1)
+        key_cls_v0 = versioner.get_multi_keys([model_cls])
+        key_id1_v0 = versioner.get_multi_keys([model1])
 
         versioner.incr(model1)
 
-        key_id1_v1 = versioner.get_key(model1)
-        key_cls_v1 = versioner.get_key(model_cls)
+        key_id1_v1 = versioner.get_multi_keys([model1])
+        key_cls_v1 = versioner.get_multi_keys([model_cls])
 
         self.assertNotEqual(key_id1_v0, key_id1_v1)
         self.assertNotEqual(key_cls_v0, key_cls_v1)
