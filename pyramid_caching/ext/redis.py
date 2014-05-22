@@ -7,11 +7,11 @@ from redis import StrictRedis, RedisError
 
 from pyramid_caching.exc import (
     CacheKeyAlreadyExists,
-    CacheAddFailure,
-    CacheGetFailure,
-    VersionGetFailure,
-    VersionMasterVersionFailure,
-    VersionIncrementFailure
+    CacheAddError,
+    CacheGetError,
+    VersionGetError,
+    VersionMasterVersionError,
+    VersionIncrementError
 )
 
 
@@ -48,7 +48,7 @@ class RedisCacheWrapper(object):
         try:
             rvalue = self.client.set(key, value, ex=expiration, nx=True)
         except RedisError as error:
-            raise CacheAddFailure(error)
+            raise CacheAddError(error)
 
         if rvalue is None:
             raise CacheKeyAlreadyExists(key)
@@ -57,7 +57,7 @@ class RedisCacheWrapper(object):
         try:
             return self.client.get(key)
         except RedisError as error:
-            raise CacheGetFailure(error)
+            raise CacheGetError(error)
 
     def flush_all(self):
         self.client.flushall()
@@ -85,7 +85,7 @@ class RedisVersionWrapper(object):
 
     - Glitch / temporary unavailability
 
-    The model version increment operation raises VersionIncrementFailure
+    The model version increment operation raises VersionIncrementError
     exception is raised. In this case the write operation must be rollback.
 
     - Permanent loss of the version-store (and recovery with an empty one)
@@ -124,14 +124,14 @@ class RedisVersionWrapper(object):
         try:
             versions = self.client.mget(keys_with_master)
         except RedisError as error:
-            raise VersionGetFailure(error)
+            raise VersionGetError(error)
 
         try:
             if versions[0] is None:
                 self._set_master_version()
                 versions[0] = self._get_master_version()
         except RedisError as error:
-            raise VersionMasterVersionFailure(error)
+            raise VersionMasterVersionError(error)
 
         versions = [v if v is not None else '0' for v in versions]
 
@@ -142,7 +142,7 @@ class RedisVersionWrapper(object):
         try:
             self.client.incr(key)
         except RedisError as error:
-            raise VersionIncrementFailure(error)
+            raise VersionIncrementError(error)
 
     def flush_all(self):
         self.client.flushall()
