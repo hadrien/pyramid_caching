@@ -18,6 +18,7 @@ Development
 * Add a cache manager which plug all components.
 * Add serializers to adapt objects to store on cache
 * Add Redis client for caching and versioning
+* Implement master-version in redis version-store
 * TODO:
   * Ability to activate / deactivate cache
   * introspectables
