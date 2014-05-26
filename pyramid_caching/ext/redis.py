@@ -6,12 +6,12 @@ import time
 from redis import StrictRedis, RedisError
 
 from pyramid_caching.exc import (
-    CacheKeyAlreadyExists,
     CacheAddError,
     CacheGetError,
+    CacheKeyAlreadyExists,
     VersionGetError,
+    VersionIncrementError,
     VersionMasterVersionError,
-    VersionIncrementError
 )
 
 
@@ -19,10 +19,12 @@ def includeme(config):
     include_cache_store(config)
     include_version_store(config)
 
+
 def include_cache_store(config):
     uri = os.environ['CACHE_STORE_REDIS_URI']
     client = StrictRedis.from_url(uri)
     config.add_cache_client(RedisCacheWrapper(client))
+
 
 def include_version_store(config):
     uri = os.environ['VERSION_STORE_REDIS_URI']

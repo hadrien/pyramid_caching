@@ -13,7 +13,6 @@ log = logging.getLogger(__name__)
 
 
 def includeme(config):
-
     config.add_directive('register_sqla_session_caching_hook',
                          register_sqla_session_caching_hook)
 
