@@ -2,11 +2,13 @@ import cPickle as pickle
 from cStringIO import StringIO
 
 from pyramid.response import Response
-from zope.interface import implementer
+from zope.interface import implementer, providedBy
 
+from pyramid_caching.exc import SerializationError, DeserializationError
 from pyramid_caching.interfaces import ISerializer, ISerializationAdapter
 
 SERIALIZER_META_VERSION = 1
+PICKLE_PROTOCOL = 2
 
 
 def includeme(config):
@@ -22,10 +24,6 @@ def includeme(config):
 
 def get_serializer(config_or_request):
     return config_or_request.registry.getUtility(ISerializer)
-
-
-class DeserializationError(Exception):
-    """An error that occurs when valid cached data could not be decoded."""
 
 
 @implementer(ISerializer)
@@ -49,32 +47,27 @@ class SerializerUtility(object):
     def dumps(self, obj, adapter=None):
         if adapter is None:
             adapter = self.registry.queryAdapter(obj, ISerializationAdapter)
-        f = StringIO()
-        protocol = 1
-        p = pickle.Pickler(f, protocol)
+            if adapter is None:
+                raise SerializationError(
+                    "No encoder registered for %s" % providedBy(obj).__name__)
         meta = {
             'type': adapter.name,
             'version': SERIALIZER_META_VERSION,
+            'payload': adapter.serialize(obj),
             }
-        payload = adapter.serialize(obj)
-        p.dump(meta)
-        p.dump(payload)
-        return f.getvalue()
+        return pickle.dumps(meta, protocol=PICKLE_PROTOCOL)
 
     def loads(self, data):
-        f = StringIO(data)
-        unpickler = pickle.Unpickler(f)
-        meta = unpickler.load()
-        if 'version' not in meta or meta['version'] != SERIALIZER_META_VERSION:
+        data = pickle.loads(data)
+        if 'version' not in data or data['version'] != SERIALIZER_META_VERSION:
             return None
         adapter = self.registry.queryAdapter(None,
                                              ISerializationAdapter,
-                                             name=meta['type'])
+                                             name=data['type'])
         if adapter is None:
             raise DeserializationError("No decoder registered for type=%s",
-                                       meta['type'])
-        payload = unpickler.load()
-        return adapter.deserialize(payload)
+                                       data['type'])
+        return adapter.deserialize(data['payload'])
 
 
 @implementer(ISerializationAdapter)
