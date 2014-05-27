@@ -16,6 +16,8 @@ from pyramid_caching.exc import (
 
 
 def includeme(config):
+    if not config.registry.settings['caching.enabled']:
+        return
     include_cache_store(config)
     include_version_store(config)
 

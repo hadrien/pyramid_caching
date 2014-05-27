@@ -11,6 +11,10 @@ def setupPackage():
     os.environ['CACHE_STORE_REDIS_URI'] = 'redis://127.0.0.1:6379/5'
     os.environ['VERSION_STORE_REDIS_URI'] = 'redis://127.0.0.1:6379/8'
 
+def tearDownPackage():
+    os.environ.pop('CACHE_STORE_REDIS_URI', None)
+    os.environ.pop('VERSION_STORE_REDIS_URI', None)
+
 
 class Base(unittest.TestCase):
 
@@ -25,7 +29,8 @@ class Base(unittest.TestCase):
         self.addCleanup(delattr, self, 'config')
         def flush_cache():
             _config.get_cache_client().flush_all()
-        self.addCleanup(flush_cache)
+        if hasattr(_config, 'get_cache_client'):
+            self.addCleanup(flush_cache)
         return _config
 
     @reify

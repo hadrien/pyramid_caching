@@ -12,6 +12,7 @@ log = logging.getLogger(__name__)
 
 
 def includeme(config):
+
     config.add_directive('get_cache_client', get_cache_client,
                          action_wrap=False)
 
@@ -98,6 +99,10 @@ class ViewCacheDecorator(object):
         self.depends_on = depends_on
 
     def __call__(self, context, request):
+        if not request.registry.settings['caching.enabled']:
+            # TODO: possible runtime shortcut here
+            return self.view(context, request)
+
         cache_manager = request.cache_manager
 
         dependencies = []
