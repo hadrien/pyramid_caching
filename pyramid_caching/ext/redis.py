@@ -120,6 +120,14 @@ class RedisVersionWrapper(object):
                         self._generate_master_version(),
                         nx=True)
 
+    def _handle_master_version(self, versions):
+        if versions[0] is None:
+            try:
+                self._set_master_version()
+                versions[0] = self._get_master_version()
+            except RedisError as error:
+                raise VersionMasterVersionError(error)
+
     def get_multi(self, keys):
         """Return an ordered list of tuple (key, value). The value default to 0
         """
@@ -130,12 +138,7 @@ class RedisVersionWrapper(object):
         except RedisError as error:
             raise VersionGetError(error)
 
-        try:
-            if versions[0] is None:
-                self._set_master_version()
-                versions[0] = self._get_master_version()
-        except RedisError as error:
-            raise VersionMasterVersionError(error)
+        self._handle_master_version(versions)
 
         versions = [v if v is not None else '0' for v in versions]
 
