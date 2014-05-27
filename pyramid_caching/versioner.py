@@ -86,17 +86,12 @@ class Versioner(object):
         self.key_versioner = key_versioner
         self.identify = identify
 
-    def get_key(self, anything):
-        identity = self.identify(anything)
-        return '%s:v=%s' % (identity, self.key_versioner.get(identity))
-
     def get_multi_keys(self, things):
         keys = [self.identify(anything) for anything in things]
 
-        versions = self.key_versioner.get_multi(keys)
+        versiontuples = self.key_versioner.get_multi(keys)
 
-        return ['%s:v=%s' % (key, version)
-                for (key, version) in zip(keys, versions)]
+        return ['%s:v=%s' % (key, version) for (key, version) in versiontuples]
 
     def incr(self, obj_or_cls, start=0):
         self.key_versioner.incr(self.identify(obj_or_cls))

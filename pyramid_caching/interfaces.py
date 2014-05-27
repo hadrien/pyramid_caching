@@ -14,13 +14,6 @@ class IKeyVersioner(Interface):
     See Redis implementation.
     """
 
-    def get(key):
-        """Get a key's version.
-
-        If found, key's version is returned, else a default value. Defaults is
-        implementation specific.
-        """
-
     def get_multi(keys):
         """Get versions for a list of keys.
 
@@ -35,9 +28,6 @@ class IKeyVersioner(Interface):
 
 
 class IVersioner(Interface):
-
-    def get_key(obj_or_cls):
-        ""
 
     def get_multi_keys(objects_or_classes):
         """Returns all versioned keys of each class or object in
