@@ -19,6 +19,7 @@ Development
 * Add serializers to adapt objects to store on cache
 * Serializer objects follow a standard `loads`/`dumps` interface.
 * Add Redis client for caching and versioning
+* Implement master-version in redis version-store
 * TODO:
   * Ability to activate / deactivate cache
   * introspectables
