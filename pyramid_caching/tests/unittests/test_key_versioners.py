@@ -114,6 +114,16 @@ class TestRedisVersionClient(unittest.TestCase):
         self.assertEqual(result, expected)
         self.redis_client.set.assert_called_once_with('cache', 42, nx=True)
 
+    def test_get_multi_no_master_version_after_reset_attempt(self):
+        keys = []
+        self.redis_client.mget.return_value = [None]
+        self.redis_client.get.return_value = None
+
+        with mock.patch('pyramid_caching.ext.redis.time') as m_t:
+            m_t.time.return_value = 42
+            with self.assertRaises(VersionMasterVersionError):
+                self.version_store.get_multi(keys)
+
     def test_get_multi_redis_error_1(self):
         self.redis_client.mget.side_effect = RedisError()
 

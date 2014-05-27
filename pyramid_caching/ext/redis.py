@@ -128,6 +128,10 @@ class RedisVersionWrapper(object):
             except RedisError as error:
                 raise VersionMasterVersionError(error)
 
+        if versions[0] is None:
+            raise VersionMasterVersionError(
+                "Still no master version after reset attempt")
+
     def get_multi(self, keys):
         """Return an ordered list of tuple (key, value). The value default to 0
         """
