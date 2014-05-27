@@ -22,8 +22,8 @@ def includeme(config):
     config.add_directive('get_serializer', get_serializer, action_wrap=False)
 
 
-def get_serializer(config_or_request):
-    return config_or_request.registry.getUtility(ISerializer)
+def get_serializer(config):
+    return config.registry.getUtility(ISerializer)
 
 
 @implementer(ISerializer)
@@ -50,11 +50,13 @@ class SerializerUtility(object):
             if adapter is None:
                 raise SerializationError(
                     "No encoder registered for %s" % providedBy(obj).__name__)
+
         meta = {
             'type': adapter.name,
             'version': SERIALIZER_META_VERSION,
             'payload': adapter.serialize(obj),
             }
+
         return pickle.dumps(meta, protocol=PICKLE_PROTOCOL)
 
     def loads(self, data):

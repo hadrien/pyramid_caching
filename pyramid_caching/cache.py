@@ -2,6 +2,7 @@ import logging
 
 from zope.interface import implementer, classImplements
 
+from pyramid_caching.events import CacheHit, CacheMiss
 from pyramid_caching.interfaces import (
     ICacheClient,
     ICacheManager,
@@ -25,7 +26,7 @@ def includeme(config):
         cache_client = config.get_cache_client()
         versioner = config.get_versioner()
         serializer = config.get_serializer()
-        manager = Manager(versioner, cache_client, serializer)
+        manager = Manager(config.registry, versioner, cache_client, serializer)
         config.registry.registerUtility(manager)
         log.debug('registering cache manager %r', manager)
 
@@ -55,15 +56,17 @@ def add_cache_client(config, client):
 @implementer(ICacheManager)
 class Manager(object):
 
-    def __init__(self, versioner, cache_client, serializer):
+    def __init__(self, registry, versioner, cache_client, serializer):
         self.versioner = versioner
         self.cache_client = cache_client
         self.serializer = serializer
+        self.registry = registry
 
-    def get_or_cache(self, get_result, prefixes, dependencies):
+    def get_or_cache(self, get_result, prefixes, dependencies, request=None):
         versioned_keys = self.versioner.get_multi_keys(dependencies)
 
-        cache_key = ':'.join(prefixes + versioned_keys)
+        key_prefix = ':'.join(prefixes)
+        cache_key = key_prefix + ':' + ':'.join(versioned_keys)
 
         cached_result = self.cache_client.get(cache_key)
 
@@ -71,8 +74,10 @@ class Manager(object):
             result = get_result()
             data = self.serializer.dumps(result)
             self.cache_client.add(cache_key, data)
+            self.registry.notify(CacheMiss(key_prefix, request=request))
         else:
             result = self.serializer.loads(cached_result)
+            self.registry.notify(CacheHit(key_prefix, request=request))
 
         return result
 
@@ -110,4 +115,7 @@ class ViewCacheDecorator(object):
 
         prefixes = [self.view.__module__, self.view.__name__]
 
-        return cache_manager.get_or_cache(get_result, prefixes, dependencies)
+        return cache_manager.get_or_cache(get_result,
+                                          prefixes,
+                                          dependencies,
+                                          request=request)

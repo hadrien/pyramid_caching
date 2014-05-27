@@ -52,6 +52,9 @@ coverage.xml
 # Sphinx documentation
 docs/_build/
 
+# Editor cruft
+*.swp
+
 .noseids
 .coveralls.yml
 TODO

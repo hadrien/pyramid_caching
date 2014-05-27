@@ -22,9 +22,10 @@ class Base(unittest.TestCase):
             'sqlalchemy.url': 'sqlite:///:memory:',
             })
         _config.include('example')
-        _config.commit()
         self.addCleanup(delattr, self, 'config')
-        self.addCleanup(_config.get_cache_client().flush_all)
+        def flush_cache():
+            _config.get_cache_client().flush_all()
+        self.addCleanup(flush_cache)
         return _config
 
     @reify
