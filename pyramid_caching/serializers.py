@@ -82,4 +82,10 @@ class ResponseAdapter(object):
         return str(response)
 
     def deserialize(self, raw_response):
-        return Response.from_file(StringIO(raw_response))
+        res = Response.from_file(StringIO(raw_response))
+
+        # Workaround for issue #99 in webob. All header names must be str
+        # instances.
+        res._headerlist = [(str(k), str(v)) for k, v in res._headerlist]
+
+        return res
