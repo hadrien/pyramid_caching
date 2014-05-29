@@ -44,14 +44,25 @@ def register_sqla_base_class(config, base_cls):
 def register_sqla_session_caching_hook(config, session_cls):
     def register():
         versioner = config.get_versioner()
+        registry = config.registry
+
+        def identify(entity):
+            return registry.queryAdapter(entity, IIdentityInspector)
 
         def on_before_commit(session):
+            identities = []
 
-            for model in session.dirty:
-                versioner.incr(model)
+            for entity in session.dirty:
+                identities.append(identify(entity))
 
-            for model in session.deleted:
-                versioner.incr(model)
+            for entity in session.deleted:
+                identities.append(identify(entity))
+
+            def after_commit(session):
+                for identity in identities:
+                    versioner.incr(identity)
+
+            event.listen(session, 'after_commit', after_commit)
 
         event.listen(session_cls, 'before_commit', on_before_commit)
 
