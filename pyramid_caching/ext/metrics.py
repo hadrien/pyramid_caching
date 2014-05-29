@@ -4,9 +4,8 @@ via pyramid_metrics.
 """
 
 from pyramid.events import subscriber
-from pyramid_metrics.utility import get_current_metrics
 
-from pyramid_caching.events import CacheHit, CacheMiss
+from pyramid_caching.events import ViewCacheHit, ViewCacheMiss
 
 
 def includeme(config):
@@ -25,20 +24,16 @@ def includeme(config):
     config.scan()
 
 
-@subscriber(CacheHit)
+@subscriber(ViewCacheHit)
 def cache_hit(event):
-    count_cache_event(event, 'hit')
+    count_view_cache_event(event, 'hit')
 
 
-@subscriber(CacheMiss)
+@subscriber(ViewCacheMiss)
 def cache_miss(event):
-    count_cache_event(event, 'miss')
+    count_view_cache_event(event, 'miss')
 
 
-def count_cache_event(event, access):
-    if event.request is not None:
-        metrics = event.request.metrics
-    else:
-        metrics = get_current_metrics()
-    if metrics is not None:
-        metrics.incr(('cache.%s' % access, event.key_prefix))
+def count_view_cache_event(event, access):
+    metrics = event.request.metrics
+    metrics.incr(('cache.%s' % access, event.cache_key.root()))

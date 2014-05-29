@@ -88,10 +88,10 @@ class ISerializationAdapter(Interface):
 
 
 class ICacheHit(Interface):
-    key_prefix = Attribute("The invariant part or the cache key")
+    cache_key = Attribute("The cache key object")
     request = Attribute("The request object")
 
 
 class ICacheMiss(Interface):
-    key_prefix = Attribute("The invariant part or the cache key")
+    cache_key = Attribute("The cache key object")
     request = Attribute("The request object")

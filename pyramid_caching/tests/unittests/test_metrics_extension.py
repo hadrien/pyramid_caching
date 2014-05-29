@@ -1,5 +1,7 @@
 import unittest
 
+from pyramid_caching.cache import CacheKey
+
 
 class TestMetricsExtension(unittest.TestCase):
     def test_cache_hit(self):
@@ -20,7 +22,7 @@ class TestMetricsExtension(unittest.TestCase):
 class DummyEvent:
     def __init__(self):
         self.request = DummyRequest()
-        self.key_prefix = 'a:b'
+        self.cache_key = CacheKey(['a', 'b'], [])
 
 
 class DummyRequest:

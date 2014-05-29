@@ -22,6 +22,8 @@ Development
 * Implement master-version in redis version-store
 * The cache manager emits CacheHit and CacheMiss events. These events can be
   forwarded to a statistics aggregator by using the pyramid_metrics extension.
+* Sets the reponse ETag and custom X-View-Cache HTTP headers based on the
+  versioned key of the resource.
 
 * TODO:
   * Ability to activate / deactivate cache
