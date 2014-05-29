@@ -35,6 +35,10 @@ class VersionMasterVersionError(VersionError):
     """Error on master version operation"""
 
 
+class VersionInhibitCaching(VersionError):
+    """Version Store inhibit caching"""
+
+
 class SerializationError(Exception):
     """An error that occurs if no encoder can be found matching the object
     type to serialize."""
