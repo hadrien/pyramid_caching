@@ -7,6 +7,9 @@ from pyramid_caching.interfaces import (
     ICacheClient,
     ICacheManager,
     )
+from pyramid_caching.exc import (
+    VersionInhibitCaching,
+    )
 
 log = logging.getLogger(__name__)
 
@@ -64,7 +67,10 @@ class Manager(object):
         self.registry = registry
 
     def get_or_cache(self, get_result, prefixes, dependencies):
-        versioned_keys = self.versioner.get_multi_keys(dependencies)
+        try:
+            versioned_keys = self.versioner.get_multi_keys(dependencies)
+        except VersionInhibitCaching:
+            return get_result()
 
         key_prefix = ':'.join(prefixes)
         cache_key = key_prefix + ':' + ':'.join(versioned_keys)
