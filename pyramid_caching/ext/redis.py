@@ -6,23 +6,27 @@ import time
 from redis import StrictRedis, RedisError
 
 from pyramid_caching.exc import (
-    CacheKeyAlreadyExists,
     CacheAddError,
     CacheGetError,
+    CacheKeyAlreadyExists,
     VersionGetError,
+    VersionIncrementError,
     VersionMasterVersionError,
-    VersionIncrementError
 )
 
 
 def includeme(config):
+    if not config.registry.settings['caching.enabled']:
+        return
     include_cache_store(config)
     include_version_store(config)
+
 
 def include_cache_store(config):
     uri = os.environ['CACHE_STORE_REDIS_URI']
     client = StrictRedis.from_url(uri)
     config.add_cache_client(RedisCacheWrapper(client))
+
 
 def include_version_store(config):
     uri = os.environ['VERSION_STORE_REDIS_URI']
@@ -116,6 +120,18 @@ class RedisVersionWrapper(object):
                         self._generate_master_version(),
                         nx=True)
 
+    def _handle_master_version(self, versions):
+        if versions[0] is None:
+            try:
+                self._set_master_version()
+                versions[0] = self._get_master_version()
+            except RedisError as error:
+                raise VersionMasterVersionError(error)
+
+        if versions[0] is None:
+            raise VersionMasterVersionError(
+                "Still no master version after reset attempt")
+
     def get_multi(self, keys):
         """Return an ordered list of tuple (key, value). The value default to 0
         """
@@ -126,12 +142,7 @@ class RedisVersionWrapper(object):
         except RedisError as error:
             raise VersionGetError(error)
 
-        try:
-            if versions[0] is None:
-                self._set_master_version()
-                versions[0] = self._get_master_version()
-        except RedisError as error:
-            raise VersionMasterVersionError(error)
+        self._handle_master_version(versions)
 
         versions = [v if v is not None else '0' for v in versions]
 

@@ -13,20 +13,23 @@ log = logging.getLogger(__name__)
 
 
 def includeme(config):
-
     config.add_directive('register_sqla_session_caching_hook',
                          register_sqla_session_caching_hook)
 
     config.add_directive('register_sqla_base_class',
                          register_sqla_base_class)
 
-    identity_inspector = SqlAlchemyIdentityInspector()
+    if config.registry.settings['caching.enabled']:
+        identity_inspector = SqlAlchemyIdentityInspector()
 
-    config.registry.registerUtility(identity_inspector,
-                                    provided=IIdentityInspector)
+        config.registry.registerUtility(identity_inspector,
+                                        provided=IIdentityInspector)
 
 
 def register_sqla_base_class(config, base_cls):
+    if not config.registry.settings['caching.enabled']:
+        return
+
     registry = config.registry
 
     identity_inspector = registry.getUtility(IIdentityInspector)
@@ -42,6 +45,9 @@ def register_sqla_base_class(config, base_cls):
 
 
 def register_sqla_session_caching_hook(config, session_cls):
+    if not config.registry.settings['caching.enabled']:
+        return
+
     def register():
         versioner = config.get_versioner()
         registry = config.registry
