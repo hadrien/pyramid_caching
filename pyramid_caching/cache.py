@@ -63,7 +63,7 @@ class Manager(object):
         self.serializer = serializer
         self.registry = registry
 
-    def get_or_cache(self, get_result, prefixes, dependencies, request=None):
+    def get_or_cache(self, get_result, prefixes, dependencies):
         versioned_keys = self.versioner.get_multi_keys(dependencies)
 
         key_prefix = ':'.join(prefixes)
@@ -75,10 +75,10 @@ class Manager(object):
             result = get_result()
             data = self.serializer.dumps(result)
             self.cache_client.add(cache_key, data)
-            self.registry.notify(CacheMiss(key_prefix, request=request))
+            self.registry.notify(CacheMiss(key_prefix))
         else:
             result = self.serializer.loads(cached_result)
-            self.registry.notify(CacheHit(key_prefix, request=request))
+            self.registry.notify(CacheHit(key_prefix))
 
         return result
 
@@ -123,4 +123,4 @@ class ViewCacheDecorator(object):
         return cache_manager.get_or_cache(get_result,
                                           prefixes,
                                           dependencies,
-                                          request=request)
+                                          )

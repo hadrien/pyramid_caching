@@ -1,17 +1,11 @@
 import mock
-import unittest
 
-try:
-    import pyramid_metrics
-except ImportError:
-    pyramid_metrics = None
 from zope.interface import implementer
 
 from pyramid_caching.interfaces import ISerializer
 from pyramid_caching.tests.functional import Base as TestCase
 
 
-@unittest.skipIf(pyramid_metrics is None, "requires pyramid_metrics")
 class MetricsFunctionalTests(TestCase):
     def setUp(self):
         from example.model import User, Session
@@ -22,21 +16,23 @@ class MetricsFunctionalTests(TestCase):
         session.add(User(id=1, name='Bob'))
         session.commit()
 
-    @mock.patch('pyramid_metrics.utility.StatsClient')
-    def test_cache_miss(self, m_stats_client):
+    @mock.patch('pyramid_caching.ext.metrics.get_current_metrics')
+    def test_cache_miss(self, m_metrics):
         self.app.get('/users/1')
-        m_incr = m_stats_client.return_value.incr
-        stats_key = 'cache.miss.example.views:get_user'
-        m_incr.assert_called_once_with(stats_key, count=1)
+        m_incr = m_metrics.return_value.incr
+        m_incr.assert_called_once_with(
+            ('cache.miss', 'example.views:get_user'))
 
-    @mock.patch('pyramid_metrics.utility.StatsClient')
-    def test_cache_hit(self, m_stats_client):
-        key_prefix = 'example.views:get_user'
-        cache_key = key_prefix + ':user:user_id=1:v=0'
-        self.cache_client.add(cache_key, "data")
+    @mock.patch('pyramid_caching.ext.metrics.get_current_metrics')
+    def test_cache_hit(self, m_metrics):
         self.app.get('/users/1')
-        m_incr = m_stats_client.return_value.incr
-        m_incr.assert_called_once_with('cache.hit.' + key_prefix, count=1)
+        self.app.get('/users/1')
+        m_incr = m_metrics.return_value.incr
+        m_incr.assert_has_calls([
+            mock.call(('cache.miss', 'example.views:get_user')),
+            mock.call(('cache.hit', 'example.views:get_user')),
+            ])
+
 
 @implementer(ISerializer)
 class TestSerializer(object):
