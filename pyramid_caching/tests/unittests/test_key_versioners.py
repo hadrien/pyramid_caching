@@ -11,7 +11,7 @@ from pyramid_caching.exc import (
     VersionGetError,
     VersionMasterVersionError,
     VersionIncrementError,
-    VersionInhibitCaching,
+    CacheDisabled,
 )
 
 from redis import (StrictRedis, RedisError)
@@ -158,5 +158,5 @@ class TestRedisVersionClient(unittest.TestCase):
     def test_inhibit_caching(self):
         self.redis_client.mget.return_value = ['off']
 
-        with self.assertRaises(VersionInhibitCaching):
+        with self.assertRaises(CacheDisabled):
             self.version_store.get_multi([])

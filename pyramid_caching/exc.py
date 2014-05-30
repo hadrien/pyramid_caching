@@ -3,6 +3,10 @@ class Base(Exception):
     """Base exception for pyramid_caching"""
 
 
+class CacheDisabled(Base):
+    """Cache is disabled """
+
+
 class CacheError(Base):
     """Base exception for cache client"""
 
@@ -33,10 +37,6 @@ class VersionIncrementError(VersionError):
 
 class VersionMasterVersionError(VersionError):
     """Error on master version operation"""
-
-
-class VersionInhibitCaching(VersionError):
-    """Version Store inhibit caching"""
 
 
 class SerializationError(Exception):
