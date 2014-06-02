@@ -135,10 +135,10 @@ class CacheResult(object):
         """Specify that this data was loaded from the application."""
         return cls(cache_key, data, False)
 
-    def md5_hash(self):
-        """A string corresponding to the MD5 digest of the cache key that
-        uniquely defines a version of the data."""
-        m = hashlib.md5()
+    def key_hash(self):
+        """A string corresponding to a cryptographic hash digest of the cache
+        key that uniquely defines the version of this result."""
+        m = hashlib.sha1()
         m.update(str(self._cache_key))
         return m.hexdigest()
 
@@ -207,5 +207,5 @@ class ViewCacheDecorator(object):
         else:
             request.registry.notify(ViewCacheMiss(result_info.key, request))
             response.headers['X-View-Cache'] = 'MISS'
-        response.headers['ETag'] = result.md5_hash()
+        response.headers['ETag'] = result.key_hash()
         return response

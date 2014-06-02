@@ -114,8 +114,8 @@ class ViewCacheDecoratorTests(unittest.TestCase):
     def test_sets_etag_from_result(self):
         request, deco = self._make_one()
         response = deco(None, request)
-        key_md5 = '3c6e0b8a9c15224a8228b9a98ca1531d'  # md5 of 'key'
-        self.assertEqual(response.headers['ETag'], key_md5)
+        key_hash = 'a62f2225bf70bfaccbc7f1ef2a397836717377de'  # SHA1 of 'key'
+        self.assertEqual(response.headers['ETag'], key_hash)
 
     def test_sets_cache_result_header(self):
         request, deco = self._make_one()
