@@ -47,6 +47,10 @@ class Base(unittest.TestCase):
         return self.config.get_versioner()
 
     @property
+    def key_versioner_client(self):
+        return self.config.get_key_version_client()
+
+    @property
     def cache_client(self):
         return self.config.get_cache_client()
 

@@ -15,4 +15,4 @@ sqlalchemy
 redis
 fakeredis
 
-pyramid_metrics
+pyramid_metrics >= 0.1.5

@@ -3,6 +3,10 @@ class Base(Exception):
     """Base exception for pyramid_caching"""
 
 
+class CacheDisabled(Base):
+    """Cache is disabled """
+
+
 class CacheError(Base):
     """Base exception for cache client"""
 

@@ -12,6 +12,7 @@ from pyramid_caching.exc import (
     VersionGetError,
     VersionIncrementError,
     VersionMasterVersionError,
+    CacheDisabled,
 )
 
 
@@ -98,9 +99,13 @@ class RedisVersionWrapper(object):
     this master-version is initialized to a new value. When a new empty
     version-store is reacheable, the master-version ends up being different
     than the previous one, hence effectively invalidating the whole cache.
+
+    Note: the special master-version 'off' will inhibit caching while still
+    maintaining the model versions.
     """
 
     MASTER_VERSION_KEY = 'cache'
+    MASTER_VERSION_DISABLE_VALUE = 'off'
 
     def __init__(self, client):
         self.client = client
@@ -131,6 +136,9 @@ class RedisVersionWrapper(object):
         if versions[0] is None:
             raise VersionMasterVersionError(
                 "Still no master version after reset attempt")
+
+        if versions[0] == self.MASTER_VERSION_DISABLE_VALUE:
+            raise CacheDisabled('Disabled by master_version')
 
     def get_multi(self, keys):
         """Return an ordered list of tuple (key, value). The value default to 0
