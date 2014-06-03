@@ -17,7 +17,7 @@ log = logging.getLogger(__name__)
 
 
 def includeme(config):
-
+    """Set up a request method to access the cache manager utility."""
     config.add_directive('get_cache_client', get_cache_client,
                          action_wrap=False)
 
@@ -85,7 +85,10 @@ class Manager(object):
 
 
 class CacheKey(object):
-    """This object specifies the formatting of cache keys from a list of base
+
+    """A key identifying a version of a complex resource in a cache.
+
+    This object specifies the formatting of cache keys from a list of base
     resource names (for example, a unique way to identify a Pyramid view
     callable) and a list of names that define the current context of the view
     (for example, a list of model names and the primary keys matching the
@@ -97,13 +100,13 @@ class CacheKey(object):
        str(key) --> 'mypackage.views:hello_view:user:bob'
 
     """
+
     def __init__(self, bases, dependencies):
         self.bases = bases
         self.dependencies = dependencies
 
     def root(self):
-        """The static part of the cache key that refers to a single view or
-        model class."""
+        """The static part that refers to a single view or model class."""
         return ':'.join(self.bases)
 
     def key(self):
@@ -118,8 +121,9 @@ _CacheResultInfo = namedtuple("CacheResultInfo", ["key", "hit"])
 
 
 class CacheResult(object):
-    """This class represents a versioned cache response based on a unique
-    key."""
+
+    """A versioned cache response based on a unique key."""
+
     def __init__(self, cache_key, data, hit):
         self._cache_key = cache_key
         self.data = data
@@ -136,8 +140,11 @@ class CacheResult(object):
         return cls(cache_key, data, False)
 
     def key_hash(self):
-        """A string corresponding to a cryptographic hash digest of the cache
-        key that uniquely defines the version of this result."""
+        """Unique hash to identify this result in the cache.
+
+        A string corresponding to a cryptographic hash digest of the cache key
+        that uniquely defines the version of this result.
+        """
         m = hashlib.sha1()
         m.update(str(self._cache_key))
         return m.hexdigest()
@@ -147,6 +154,7 @@ class CacheResult(object):
 
 
 class cache_factory(object):
+
     """Decorator that defines the model dependencies for a view method.
 
     ::
@@ -156,6 +164,7 @@ class cache_factory(object):
            return "Hello, {}".format(user.name)
 
     """
+
     def __init__(self, depends_on=None):
         self.depends_on = depends_on
 
@@ -170,34 +179,28 @@ class ViewCacheDecorator(object):
         self.depends_on = depends_on
 
     def __call__(self, context, request):
-        if not request.registry.settings['caching.enabled']:
-            response = self.view(context, request)
-            response.headers['X-View-Cache'] = 'DISABLED'
-            return response
-
-        cache_manager = request.cache_manager
-
-        dependencies = []
-        for cls, options in self.depends_on.iteritems():
-
-            ids_dict = {}
-            if 'matchdict' in options:
-                for match in options['matchdict']:
-                    ids_dict.update({match: request.matchdict[match]})
-
-            dependencies.append((cls, ids_dict))
-
         def get_result():
             return self.view(context, request)
 
+        def nocache_result():
+            response = get_result()
+            response.headers['X-View-Cache'] = 'DISABLED'
+            return response
+
+        if not request.registry.settings['caching.enabled']:
+            return nocache_result()
+
+        cache_manager = request.cache_manager
+
         prefixes = [self.view.__module__, self.view.__name__]
+        dependencies = self.get_dependencies(request.matchdict)
 
         try:
             result = cache_manager.get_or_cache(get_result,
                                                 prefixes,
                                                 dependencies)
         except CacheDisabled:
-            return get_result()
+            return nocache_result()
 
         response = result.data
         result_info = result.info()
@@ -209,3 +212,15 @@ class ViewCacheDecorator(object):
             response.headers['X-View-Cache'] = 'MISS'
         response.headers['ETag'] = result.key_hash()
         return response
+
+    def get_dependencies(self, matchdict):
+        dependencies = []
+        for cls, options in self.depends_on.iteritems():
+
+            ids_dict = {}
+            if 'matchdict' in options:
+                for match in options['matchdict']:
+                    ids_dict.update({match: matchdict[match]})
+
+            dependencies.append((cls, ids_dict))
+        return dependencies

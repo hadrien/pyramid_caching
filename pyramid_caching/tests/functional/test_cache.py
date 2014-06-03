@@ -1,7 +1,6 @@
 from pyramid_caching.tests.functional import Base
 
 
-
 class Test(Base):
 
     def setUp(self):
@@ -32,4 +31,3 @@ class Test(Base):
         self.app.get('/users/1')
 
         # TODO: test if cache was disabled
-

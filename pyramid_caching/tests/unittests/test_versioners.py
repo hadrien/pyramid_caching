@@ -11,6 +11,7 @@ from pyramid_caching.versioner import Versioner
 class BasicModel(object):
     def __init__(self, id):
         self.id = id
+
     def __hash__(self):
         return self.id
 
@@ -40,8 +41,10 @@ def get_basic():
     class TestKeyVersioner(object):
         def __init__(self):
             self._d = dict()
+
         def get_multi(self, keys):
             return [(k, self._d.setdefault(k, 0)) for k in keys]
+
         def incr(self, key):
             self._d[key] += 1
     key_versioner = TestKeyVersioner()
