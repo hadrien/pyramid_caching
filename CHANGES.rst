@@ -9,6 +9,11 @@ Development
   * Introspectables
   * Content negociation: we should add content type in cache key.
 
+0.1.1
+-----
+
+* Switch back to d2to1.
+
 0.1
 ---
 
