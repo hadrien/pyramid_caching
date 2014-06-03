@@ -1,4 +1,4 @@
-d2to1
+pbr
 nose
 nosexcover
 nose-parameterized

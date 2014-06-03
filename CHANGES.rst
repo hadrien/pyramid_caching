@@ -4,6 +4,14 @@ Changelog
 Development
 -----------
 
+* TODO:
+
+  * Introspectables
+  * Content negociation: we should add content type in cache key.
+
+0.1
+---
+
 * First draft of interfaces
 * Add a highly not efficient implementation of a key versioner
 * Add a model versioner which depends on key versioner and model identity
@@ -24,11 +32,3 @@ Development
   forwarded to a statistics aggregator by using the pyramid_metrics extension.
 * Sets the reponse ETag and custom X-View-Cache HTTP headers based on the
   versioned key of the resource.
-
-* TODO:
-  * Ability to activate / deactivate cache
-  * introspectables
-  * Exceptions handling
-  * Tests
-  * Cleanups
-  * Content negociation: we should add content type in cache key.

@@ -1,8 +1,8 @@
 from setuptools import setup
 
 setup(
-    setup_requires=['d2to1'],
-    d2to1=True,
+    setup_requires=['pbr'],
+    pbr=True,
     test_suite="nose.collector",
     extras_require={
         'redis': ['redis', 'hiredis'],
