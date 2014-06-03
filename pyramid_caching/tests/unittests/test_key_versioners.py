@@ -5,9 +5,6 @@ from nose_parameterized import parameterized
 
 from pyramid_caching.ext.redis import RedisVersionWrapper
 from pyramid_caching.exc import (
-    CacheKeyAlreadyExists,
-    CacheAddError,
-    CacheGetError,
     VersionGetError,
     VersionMasterVersionError,
     VersionIncrementError,
@@ -16,12 +13,15 @@ from pyramid_caching.exc import (
 
 from redis import (StrictRedis, RedisError)
 
+
 def get_redis():
     return RedisVersionWrapper(StrictRedis())
+
 
 KEY_VERSIONERS = [
     ("redis", get_redis, '0'),
 ]
+
 
 class TestKeyVersioner(unittest.TestCase):
 

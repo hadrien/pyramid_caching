@@ -1,50 +1,52 @@
 import unittest
 
 
-class CacheHitEventTests(unittest.TestCase):
+class ViewCacheHitEventTests(unittest.TestCase):
     def test_class_implements_interface(self):
-        from pyramid_caching.events import CacheHit
+        from pyramid_caching.events import ViewCacheHit
         from pyramid_caching.interfaces import ICacheHit
         from zope.interface.verify import verifyClass
-        verifyClass(ICacheHit, CacheHit)
+        verifyClass(ICacheHit, ViewCacheHit)
 
     def test_instance_implements_interface(self):
-        from pyramid_caching.events import CacheHit
+        from pyramid_caching.events import ViewCacheHit
         from pyramid_caching.interfaces import ICacheHit
         from zope.interface.verify import verifyObject
         request = DummyRequest()
-        event = CacheHit("a_key", request=request)
+        event = ViewCacheHit(None, request)
         verifyObject(ICacheHit, event)
 
     def test_attributes(self):
-        from pyramid_caching.events import CacheHit
+        from pyramid_caching.events import ViewCacheHit
+        key = object()
         request = DummyRequest()
-        event = CacheHit("a_key", request=request)
+        event = ViewCacheHit(key, request)
         self.assertEqual(event.request, request)
-        self.assertEqual(event.key_prefix, "a_key")
+        self.assertEqual(event.cache_key, key)
 
 
-class CacheMissEventTests(unittest.TestCase):
+class ViewCacheMissEventTests(unittest.TestCase):
     def test_class_implements_interface(self):
-        from pyramid_caching.events import CacheMiss
+        from pyramid_caching.events import ViewCacheMiss
         from pyramid_caching.interfaces import ICacheMiss
         from zope.interface.verify import verifyClass
-        verifyClass(ICacheMiss, CacheMiss)
+        verifyClass(ICacheMiss, ViewCacheMiss)
 
     def test_instance_implements_interface(self):
-        from pyramid_caching.events import CacheMiss
+        from pyramid_caching.events import ViewCacheMiss
         from pyramid_caching.interfaces import ICacheMiss
         from zope.interface.verify import verifyObject
         request = DummyRequest()
-        event = CacheMiss("a_key", request=request)
+        event = ViewCacheMiss("a_key", request)
         verifyObject(ICacheMiss, event)
 
     def test_attributes(self):
-        from pyramid_caching.events import CacheMiss
+        from pyramid_caching.events import ViewCacheMiss
+        key = object()
         request = DummyRequest()
-        event = CacheMiss("a_key", request=request)
+        event = ViewCacheMiss(key, request)
         self.assertEqual(event.request, request)
-        self.assertEqual(event.key_prefix, "a_key")
+        self.assertEqual(event.cache_key, key)
 
 
 class DummyRequest:

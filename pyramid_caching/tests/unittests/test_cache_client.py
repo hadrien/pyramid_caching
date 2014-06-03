@@ -1,5 +1,4 @@
 import unittest
-import types
 
 import mock
 from nose_parameterized import parameterized
@@ -9,12 +8,10 @@ from pyramid_caching.exc import (
     CacheKeyAlreadyExists,
     CacheAddError,
     CacheGetError,
-    VersionGetError,
-    VersionMasterVersionError,
-    VersionIncrementError
-)
+    )
 
 from redis import RedisError
+
 
 class MockClient(object):
     def __init__(self, m_set, m_get, m_flush):
@@ -36,14 +33,13 @@ def get_redis(**kwargs):
     m_set = mock.Mock(name='add')
     m_get = mock.Mock(name='get')
     m_flush = mock.Mock(name='get')
-    return (
-        m_set, m_get, m_flush,
-        RedisCacheWrapper(MockClient(m_set=m_set, m_get=m_get, m_flush=m_flush))
-        )
+    m_client = MockClient(m_set=m_set, m_get=m_get, m_flush=m_flush)
+    return (m_set, m_get, m_flush, RedisCacheWrapper(m_client))
 
 CACHE_CLIENTS = [
     ("redis", get_redis, '0'),
 ]
+
 
 class TestCacheClient(unittest.TestCase):
 

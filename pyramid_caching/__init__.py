@@ -1,6 +1,7 @@
 import os
 from pyramid.settings import asbool
 
+
 def includeme(config):
     """Pyramid_caching main includeme.
 
@@ -16,6 +17,7 @@ def includeme(config):
         config.include('.key_versioner')
         config.include('.serializers')
         config.include('.cache')
+
 
 def parse_settings(config):
     cache_enabled = config.registry.settings.get('caching.enabled', 'true')

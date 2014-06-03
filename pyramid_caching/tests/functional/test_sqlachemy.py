@@ -117,7 +117,7 @@ class Test(Base):
 
         # msg0 key has changed
         key_msg0_v2 = self.versioner.get_multi_keys([UserNote(id=11,
-                                                   user_id=user_id)])
+                                                    user_id=user_id)])
         self.assertNotEqual(key_msg0_v1, key_msg0_v2)
 
         # delete user which cascade delete msg1

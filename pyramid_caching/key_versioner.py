@@ -19,7 +19,8 @@ def get_key_version_client(config_or_request):
 
 def add_key_version_client(config, key_versioner):
     if not IKeyVersioner.implementedBy(key_versioner.__class__):
-        log.debug('assuming %r implements %r', key_versioner.__class__, IKeyVersioner)
+        log.debug('assuming %r implements %r',
+                  key_versioner.__class__, IKeyVersioner)
         classImplements(key_versioner.__class__, IKeyVersioner)
 
     def register():
