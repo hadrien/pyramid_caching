@@ -98,4 +98,5 @@ class Versioner(object):
 
         if not inspect.isclass(obj_or_cls):  # increment model class version
             identity = self.identify(obj_or_cls.__class__)
-            self.key_versioner.incr(identity)
+            if identity:
+                self.key_versioner.incr(identity)
