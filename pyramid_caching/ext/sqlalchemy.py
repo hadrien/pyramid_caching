@@ -5,6 +5,7 @@ import logging
 
 from zope.interface import implementer
 
+from pyramid_caching.exc import VersionIncrementError
 from pyramid_caching.interfaces import IIdentityInspector
 
 from sqlalchemy import event
@@ -39,10 +40,8 @@ def register_sqla_base_class(config, base_cls):
 
     registry.registerAdapter(identify, required=[base_cls],
                              provided=IIdentityInspector)
-
     registry.registerAdapter(identify, required=[base_cls.__class__],
                              provided=IIdentityInspector)
-
 
 def register_sqla_session_caching_hook(config, session_cls):
     if not config.registry.settings['caching.enabled']:
@@ -59,6 +58,7 @@ def register_sqla_session_caching_hook(config, session_cls):
             identities = []
 
             for entity in session.dirty:
+                identities.append(entity.__tablename__)
                 identities.append(identify(entity))
 
             for entity in session.deleted:
@@ -66,7 +66,10 @@ def register_sqla_session_caching_hook(config, session_cls):
 
             def after_commit(session):
                 for identity in identities:
-                    versioner.incr(identity)
+                    try:
+                        versioner.incr(identity)
+                    except VersionIncrementError:
+                        log.exception("Entity version increment failed.")
 
             event.listen(session, 'after_commit', after_commit)
 

@@ -158,7 +158,10 @@ class cache_factory(object):
     """Decorator that defines the model dependencies for a view method.
 
     ::
-       @cache_factory(depends_on={User: {'matchdict': 'user'}})
+       @view_config(
+           decorator=cache_factory(depends_on=[
+               RouteDependency(User, {'user_id': 'id'}),
+               ])
        def hello_view(context, request):
            user = User(request.matchdict['user'])
            return "Hello, {}".format(user.name)
@@ -193,7 +196,7 @@ class ViewCacheDecorator(object):
         cache_manager = request.cache_manager
 
         prefixes = [self.view.__module__, self.view.__name__]
-        dependencies = self.get_dependencies(request.matchdict)
+        dependencies = self.get_dependencies(request)
 
         try:
             result = cache_manager.get_or_cache(get_result,
@@ -213,14 +216,70 @@ class ViewCacheDecorator(object):
         response.headers['ETag'] = result.key_hash()
         return response
 
-    def get_dependencies(self, matchdict):
+    def get_dependencies(self, request):
         dependencies = []
-        for cls, options in self.depends_on.iteritems():
-
-            ids_dict = {}
-            if 'matchdict' in options:
-                for match in options['matchdict']:
-                    ids_dict.update({match: matchdict[match]})
-
-            dependencies.append((cls, ids_dict))
+        for spec in self.depends_on:
+            dependencies.append(spec.identity_from_request(request))
         return dependencies
+
+
+class CollectionDependency(object):
+
+    """Model dependency on the collection of all items."""
+
+    def __init__(self, model_class):
+        self.model_class = model_class
+
+    def identity_from_request(self, request):
+        return self.model_class
+
+
+class RouteDependency(object):
+
+    """Model dependency on route segment.
+
+    Use to specify the relationships between the matched route segment elements
+    and the column names of the model primary keys.
+
+    For example, for a view where the route pattern `r'/users/{user_id}'`,
+    and the `user_id` element is related to the `id` column of the `User`
+    model, the dependency can be written as:
+
+    ::
+       @view_config(
+           decorator=cache_factory(depends_on=[
+               RouteDependency(User, {'user_id': 'id'}),
+               ])
+       def user_view(context, request):
+           pass
+
+    When a request in received, the model instance identity will be generated
+    by matched route segment elements (the matchdict items). For a request for
+    `/users/sue`, it would generate:
+
+    ::
+       identity_from_request(request) --> {'id': 'sue'}
+    """
+
+    def __init__(self, model_class, primary_key_elements):
+        self.model_class = model_class
+        self.primary_key_elements = primary_key_elements
+
+    def identity_from_request(self, request):
+        return (self.model_class,
+                dict((pk, request.matchdict[element])
+                     for element, pk in self.primary_key_elements.iteritems())
+                )
+
+
+class QueryStringDependency(object):
+
+    """Cached resource dependency based on query string parameters."""
+
+    def __init__(self, params):
+        self.params = params
+
+    def identity_from_request(self, request):
+        return dict((p, request.params[p])
+                    for p in self.params
+                    if p in request.params)

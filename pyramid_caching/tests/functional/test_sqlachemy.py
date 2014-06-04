@@ -31,6 +31,7 @@ class Test(Base):
         key_cls_0 = self.versioner.get_multi_keys([User])
         key_obj_0 = self.versioner.get_multi_keys([user])
 
+        self.versioner.incr(User)
         self.versioner.incr(user)
 
         key_cls_1 = self.versioner.get_multi_keys([User])

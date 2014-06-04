@@ -1,4 +1,3 @@
-import inspect
 import logging
 
 from zope.interface import implementer
@@ -34,7 +33,6 @@ def includeme(config):
         required=[tuple],
         provided=IIdentityInspector,
         )
-
     registry.registerAdapter(
         lambda x: DictIdentityInspector(identify).identify(x),
         required=[dict],
@@ -46,7 +44,7 @@ def includeme(config):
 
     def register():
         key_versioner = config.get_key_version_client()
-        versioner = Versioner(key_versioner, identify)
+        versioner = Versioner(key_versioner, config)
         config.registry.registerUtility(versioner)
         log.debug('registering versioner %r', versioner)
 
@@ -59,12 +57,14 @@ def get_versioner(config_or_request):
 
 @implementer(IIdentityInspector)
 class TupleIdentityInspector(object):
-
     def __init__(self, identify):
         self._identify = identify
 
-    def identify(self, tuple_or_list):
-        return ':'.join([self._identify(elem) for elem in tuple_or_list])
+    def identify(self, t):
+        try:
+            return ':'.join([self._identify(elem) for elem in t])
+        except TypeError:
+            raise TypeError("Could not adapt all elements of %r" % repr(t))
 
 
 @implementer(IIdentityInspector)
@@ -75,16 +75,22 @@ class DictIdentityInspector(object):
 
     def identify(self, dict_like):
         elems = ['%s=%s' % (self._identify(k), self._identify(v))
-                 for k, v in dict_like.iteritems()]
+                 for k, v in sorted(dict_like.iteritems())]
         return ':'.join(elems)
 
 
 @implementer(IVersioner)
 class Versioner(object):
 
-    def __init__(self, key_versioner, identify):
+    def __init__(self, key_versioner, config, identify=None):
         self.key_versioner = key_versioner
-        self.identify = identify
+        if identify is not None:
+            self.identify = identify
+        else:
+            self.registry = config.registry
+
+    def identify(self, x):
+        return self.registry.queryAdapter(x, IIdentityInspector)
 
     def get_multi_keys(self, things):
         keys = [self.identify(anything) for anything in things]
@@ -93,10 +99,5 @@ class Versioner(object):
 
         return ['%s:v=%s' % (key, version) for (key, version) in versiontuples]
 
-    def incr(self, obj_or_cls, start=0):
+    def incr(self, obj_or_cls):
         self.key_versioner.incr(self.identify(obj_or_cls))
-
-        if not inspect.isclass(obj_or_cls):  # increment model class version
-            identity = self.identify(obj_or_cls.__class__)
-            if identity:
-                self.key_versioner.incr(identity)

@@ -51,7 +51,7 @@ def get_basic():
 
     id_inspector = BasicModelIdentityInspector()
 
-    versioner = Versioner(key_versioner, id_inspector.identify)
+    versioner = Versioner(key_versioner, None, identify=id_inspector.identify)
     return versioner, instantiate_model, BasicModel
 
 
@@ -94,6 +94,7 @@ class TestBasic(unittest.TestCase):
         key_id1_v0 = versioner.get_multi_keys([model1])
 
         versioner.incr(model1)
+        versioner.incr(model_cls)
 
         key_id1_v1 = versioner.get_multi_keys([model1])
         key_cls_v1 = versioner.get_multi_keys([model_cls])

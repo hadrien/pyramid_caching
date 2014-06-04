@@ -24,6 +24,10 @@ class Base(declarative_base(metadata=metadata)):
     __abstract__ = True
 
     @classmethod
+    def all(cls):
+        return Session().query(cls).all()
+
+    @classmethod
     def get(cls, ids):
         return Session().query(cls).get(ids)
 
@@ -38,6 +42,10 @@ class User(Base):
 
     notes = relationship('UserNote', backref='user',
                          cascade='all, delete-orphan')
+
+    @classmethod
+    def filter_by_name(cls, name):
+        return Session().query(cls).filter_by(name=name).all()
 
     def __repr__(self):
         return '<User id=%s>' % self.id

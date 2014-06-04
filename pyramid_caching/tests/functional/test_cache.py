@@ -17,19 +17,20 @@ class Test(Base):
     def tearDown(self):
         self.cache_client.client.delete('cache')
 
-    def test_cache_view(self):
-        result1 = self.app.get('/users/1').json
-
-        result2 = self.app.get('/users/1').json
-
-        self.assertEqual(result1, result2)
-
+    def _modify_user(self):
         from example.model import User, Session
         session = Session()
         user = session.query(User).get(1)
         user.name = 'Bob Marley'
         session.commit()
         session.close()
+
+    def test_cache_view(self):
+        result1 = self.app.get('/users/1').json
+        result2 = self.app.get('/users/1').json
+        self.assertEqual(result1, result2)
+
+        self._modify_user()
         self.assertNotEqual(result1, self.app.get('/users/1').json)
 
     def test_inhibited_cache_view(self):
@@ -40,3 +41,11 @@ class Test(Base):
         self.app.get('/users/1')
 
         # TODO: test if cache was disabled
+
+    def test_cache_index(self):
+        result1 = self.app.get('/users').json
+        self._modify_user()
+        result2 = self.app.get('/users').json
+        self.assertNotEqual(result1, result2)
+        result3 = self.app.get('/users?name=Ziggy').json
+        self.assertNotEqual(result2, result3)
