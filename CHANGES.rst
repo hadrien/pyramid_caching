@@ -1,3 +1,4 @@
+
 Changelog
 =========
 
@@ -9,6 +10,8 @@ Development
   * DOCUMENTATION.
   * Introspectables
   * Content negociation: we should add content type in cache key.
+
+* In ext.sqlalchemy: Increment new and deleted entities and table identities.
 
 0.1.2
 -----
