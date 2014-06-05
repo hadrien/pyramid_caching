@@ -1,11 +1,12 @@
 from sqlalchemy import Column, Integer, String, MetaData, ForeignKey, Text
 from sqlalchemy.engine import engine_from_config
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, relationship
+from sqlalchemy.orm import scoped_session, sessionmaker, relationship
 
 metadata = MetaData()
 
-Session = sessionmaker()
+session_factory = sessionmaker()
+Session = scoped_session(session_factory)
 
 
 def includeme(config):

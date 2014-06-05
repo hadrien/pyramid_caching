@@ -15,7 +15,9 @@ class Test(Base):
         self.cache_client.client.delete('cache')
 
     def tearDown(self):
+        from example.model import Session
         self.cache_client.client.delete('cache')
+        Session.remove()
 
     def _modify_user(self):
         from example.model import User, Session

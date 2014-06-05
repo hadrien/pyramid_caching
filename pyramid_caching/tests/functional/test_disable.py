@@ -16,7 +16,9 @@ class Test(Base):
         session.commit()
 
     def tearDown(self):
+        from example.model import Session
         os.environ.pop('CACHING_ENABLED', None)
+        Session.remove()
 
     def test_disabled_api(self):
         # Check that part of the API is available (inactive)
