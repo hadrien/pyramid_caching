@@ -31,6 +31,10 @@ class SqlAlchemyExtensionTests(unittest.TestCase):
         self.config = Configurator(settings={
             'caching.enabled': True,
             })
+
+        Session.add(User(name='hadrien', address='down the hill'))
+        Session.commit()
+
         register_sqla_session_caching_hook(self.config, Session)
         self.config.registry.registerAdapter(DummyIdentityInspector(),
                                              required=[User],
@@ -66,6 +70,13 @@ class SqlAlchemyExtensionTests(unittest.TestCase):
         u.address = '456 moved'
         Session.commit()
         self.assertEqual(self.key_versioner.incr_keys, ['users', 'users:joe'])
+
+    def test_delete_entity(self):
+        user = Session.query(User).filter_by(name='hadrien').first()
+        Session.delete(user)
+        Session.commit()
+        self.assertEqual(self.key_versioner.incr_keys,
+                         ['users', 'users:hadrien'])
 
 
 class User(object):
