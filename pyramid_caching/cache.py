@@ -105,9 +105,17 @@ class CacheKey(object):
         self.bases = bases
         self.dependencies = dependencies
 
+    def _flatten(self, item):
+        if isinstance(item, dict):
+            return ':'.join(["%s=%s" % (k, v)
+                             for k, v in sorted(item.iteritems())])
+        elif isinstance(item, list):
+            return ':'.join([self._flatten(x) for x in item])
+        return item
+
     def root(self):
         """The static part that refers to a single view or model class."""
-        return ':'.join(self.bases)
+        return self._flatten(self.bases)
 
     def key(self):
         """The unique cache key identifying a resource and its context."""
@@ -159,27 +167,37 @@ class cache_factory(object):
 
     ::
        @view_config(
-           decorator=cache_factory(depends_on=[
-               RouteDependency(User, {'user_id': 'id'}),
-               ])
+           decorator=cache_factory(
+               predicates=[
+                   QueryStringPredicate(['name']),
+                   ],
+               depends_on=[
+                   RouteDependency(User, {'user_id': 'id'}),
+                   ],
+               )
        def hello_view(context, request):
            user = User(request.matchdict['user'])
            return "Hello, {}".format(user.name)
 
     """
 
-    def __init__(self, depends_on=None):
+    def __init__(self, predicates=None, depends_on=None):
+        self.predicates = predicates
         self.depends_on = depends_on
 
     def __call__(self, view):
-        return ViewCacheDecorator(view, self.depends_on)
+        return ViewCacheDecorator(view,
+                                  predicates=self.predicates,
+                                  depends_on=self.depends_on,
+                                  )
 
 
 class ViewCacheDecorator(object):
 
-    def __init__(self, view, depends_on=None):
+    def __init__(self, view, predicates=None, depends_on=None):
         self.view = view
-        self.depends_on = depends_on
+        self.predicates = predicates or []
+        self.depends_on = depends_on or []
 
     def __call__(self, context, request):
         def get_result():
@@ -196,6 +214,8 @@ class ViewCacheDecorator(object):
         cache_manager = request.cache_manager
 
         prefixes = [self.view.__module__, self.view.__name__]
+        prefixes.extend(self.get_predicates(request))
+
         dependencies = self.get_dependencies(request)
 
         try:
@@ -216,11 +236,11 @@ class ViewCacheDecorator(object):
         response.headers['ETag'] = result.key_hash()
         return response
 
+    def get_predicates(self, request):
+        return [pred(request) for pred in self.predicates]
+
     def get_dependencies(self, request):
-        dependencies = []
-        for spec in self.depends_on:
-            dependencies.append(spec.identity_from_request(request))
-        return dependencies
+        return [dep(request) for dep in self.depends_on]
 
 
 class CollectionDependency(object):
@@ -230,7 +250,7 @@ class CollectionDependency(object):
     def __init__(self, model_class):
         self.model_class = model_class
 
-    def identity_from_request(self, request):
+    def __call__(self, request):
         return self.model_class
 
 
@@ -265,21 +285,21 @@ class RouteDependency(object):
         self.model_class = model_class
         self.primary_key_elements = primary_key_elements
 
-    def identity_from_request(self, request):
+    def __call__(self, request):
         return (self.model_class,
                 dict((pk, request.matchdict[element])
                      for element, pk in self.primary_key_elements.iteritems())
                 )
 
 
-class QueryStringDependency(object):
+class QueryStringPredicate(object):
 
-    """Cached resource dependency based on query string parameters."""
+    """Cached resource predicate based on query string parameters."""
 
     def __init__(self, params):
         self.params = params
 
-    def identity_from_request(self, request):
+    def __call__(self, request):
         return dict((p, request.params[p])
                     for p in self.params
                     if p in request.params)

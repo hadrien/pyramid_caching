@@ -79,16 +79,14 @@ class ViewCacheDecoratorTests(unittest.TestCase):
         response = view(None, request)
         self.assertEqual(response.body, "ok")
 
-    def _make_one(self, depends_on=None, hit=True):
+    def _make_one(self, predicates=None, depends_on=None, hit=True):
         from pyramid_caching.cache import ViewCacheDecorator
-
         request = testing.DummyRequest()
         request.registry.settings['caching.enabled'] = True
         request.cache_manager = DummyCacheManager(hit)
-
-        if depends_on is None:
-            depends_on = []
-        return request, ViewCacheDecorator(self._view, depends_on=depends_on)
+        return request, ViewCacheDecorator(self._view,
+                                           predicates=predicates,
+                                           depends_on=depends_on)
 
     def test_key_base_from_view_name(self):
         request, deco = self._make_one()
@@ -105,15 +103,15 @@ class ViewCacheDecoratorTests(unittest.TestCase):
         self.assertEqual(request.cache_manager.dependencies,
                          [('User', {'id': '123'})])
 
-    def test_key_dependencies_from_query_string(self):
-        from pyramid_caching.cache import QueryStringDependency
-        request, deco = self._make_one(depends_on=[
-            QueryStringDependency(['name']),
+    def test_key_prefix_from_query_string(self):
+        from pyramid_caching.cache import QueryStringPredicate
+        request, deco = self._make_one(predicates=[
+            QueryStringPredicate(['name']),
             ])
         request.params = {'name': 'bob', 'utm_campaign': 'xxxx'}
         deco(None, request)
-        self.assertEqual(request.cache_manager.dependencies,
-                         [{'name': 'bob'}])
+        self.assertEqual(request.cache_manager.prefixes[-1],
+                         {'name': 'bob'})
 
     def test_cache_miss_calls_view(self):
         request, deco = self._make_one()

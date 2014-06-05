@@ -4,7 +4,7 @@ from pyramid.httpexceptions import HTTPNotFound
 from pyramid_caching.cache import (
     cache_factory,
     CollectionDependency,
-    QueryStringDependency,
+    QueryStringPredicate,
     RouteDependency,
     )
 
@@ -39,10 +39,14 @@ def get_user(request):
     route_name='users',
     renderer='json',
     request_method='GET',
-    decorator=cache_factory(depends_on=[
-        CollectionDependency(User),
-        QueryStringDependency(['name']),
-        ]),
+    decorator=cache_factory(
+        predicates=[
+            QueryStringPredicate(['name']),
+            ],
+        depends_on=[
+            CollectionDependency(User),
+            ],
+        ),
     )
 def list_users(request):
     if 'name' in request.params:
