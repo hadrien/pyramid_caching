@@ -57,7 +57,7 @@ class SqlAlchemyExtensionTests(unittest.TestCase):
         u = User(name='bob', address='123 street')
         Session.add(u)
         Session.commit()
-        self.assertEqual(self.key_versioner.incr_keys, [])
+        self.assertEqual(self.key_versioner.incr_keys, ['users'])
 
     def test_modify_entity(self):
         u = User(name='joe', address='123 street')
@@ -84,7 +84,11 @@ class DummyIdentityInspector:
 
 class DummyKeyVersioner:
     def __init__(self):
-        self.incr_keys = []
+        self._incr_keys = set()
 
     def incr(self, key):
-        self.incr_keys.append(key)
+        self._incr_keys.add(key)
+
+    @property
+    def incr_keys(self):
+        return list(self._incr_keys)
