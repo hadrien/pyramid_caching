@@ -1,11 +1,12 @@
 from sqlalchemy import Column, Integer, String, MetaData, ForeignKey, Text
 from sqlalchemy.engine import engine_from_config
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, relationship
+from sqlalchemy.orm import scoped_session, sessionmaker, relationship
 
 metadata = MetaData()
 
-Session = sessionmaker()
+session_factory = sessionmaker()
+Session = scoped_session(session_factory)
 
 
 def includeme(config):
@@ -24,6 +25,10 @@ class Base(declarative_base(metadata=metadata)):
     __abstract__ = True
 
     @classmethod
+    def all(cls):
+        return Session().query(cls).all()
+
+    @classmethod
     def get(cls, ids):
         return Session().query(cls).get(ids)
 
@@ -38,6 +43,10 @@ class User(Base):
 
     notes = relationship('UserNote', backref='user',
                          cascade='all, delete-orphan')
+
+    @classmethod
+    def filter_by_name(cls, name):
+        return Session().query(cls).filter_by(name=name).all()
 
     def __repr__(self):
         return '<User id=%s>' % self.id

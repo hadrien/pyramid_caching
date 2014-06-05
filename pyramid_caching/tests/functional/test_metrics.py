@@ -16,6 +16,10 @@ class MetricsFunctionalTests(TestCase):
         session.add(User(id=1, name='Bob'))
         session.commit()
 
+    def tearDown(self):
+        from example.model import Session
+        Session.remove()
+
     @mock.patch('pyramid_metrics.utility.StatsClient')
     def test_cache_miss(self, m_statsd):
         self.app.get('/users/1')
