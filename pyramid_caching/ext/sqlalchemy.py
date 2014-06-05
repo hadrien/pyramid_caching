@@ -43,6 +43,7 @@ def register_sqla_base_class(config, base_cls):
     registry.registerAdapter(identify, required=[base_cls.__class__],
                              provided=IIdentityInspector)
 
+
 def register_sqla_session_caching_hook(config, session_cls):
     if not config.registry.settings['caching.enabled']:
         return

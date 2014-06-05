@@ -7,9 +7,7 @@ from zope.interface import implementer
 
 from pyramid_caching.interfaces import IIdentityInspector
 from pyramid_caching.versioner import Versioner
-from pyramid_caching.ext.sqlalchemy import (
-            register_sqla_session_caching_hook,
-            )
+from pyramid_caching.ext.sqlalchemy import register_sqla_session_caching_hook
 
 engine = create_engine('sqlite:///:memory:')
 metadata = MetaData(engine)
@@ -44,7 +42,8 @@ class SqlAlchemyExtensionTests(unittest.TestCase):
                                              required=[unicode],
                                              provided=IIdentityInspector)
         self.key_versioner = DummyKeyVersioner()
-        self.config.get_versioner = lambda: Versioner(self.key_versioner, self.config)
+        self.config.get_versioner = lambda: Versioner(self.key_versioner,
+                                                      self.config)
         self.config.commit()
 
     def tearDown(self):

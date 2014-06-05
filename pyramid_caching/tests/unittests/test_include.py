@@ -34,8 +34,10 @@ class TestInclude(unittest.TestCase):
         ('env_false', {'CACHING_ENABLED': 'false'}, {}, False),
         ('settings_true', {}, {'caching.enabled': 'true'}, True),
         ('settings_false', {}, {'caching.enabled': 'false'}, False),
-        ('both', {'CACHING_ENABLED': 'true'}, {'caching.enabled': 'false'}, True),
-        ('both2', {'CACHING_ENABLED': 'false'}, {'caching.enabled': 'true'}, False),
+        ('both', {'CACHING_ENABLED': 'true'}, {'caching.enabled': 'false'},
+         True),
+        ('both2', {'CACHING_ENABLED': 'false'}, {'caching.enabled': 'true'},
+         False),
         ])
     def test_parse_settings(self, name, envs, settings, expected):
         from pyramid_caching import parse_settings
