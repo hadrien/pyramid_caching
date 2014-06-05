@@ -56,16 +56,21 @@ def register_sqla_session_caching_hook(config, session_cls):
             return registry.queryAdapter(entity, IIdentityInspector)
 
         def on_before_commit(session):
-            identities = []
+            identities = set()
+
+            for entity in session.new:
+                identities.add(entity.__tablename__)
 
             for entity in session.dirty:
-                identities.append(entity.__tablename__)
-                identities.append(identify(entity))
+                identities.add(entity.__tablename__)
+                identities.add(identify(entity))
 
             for entity in session.deleted:
-                identities.append(identify(entity))
+                identities.add(entity.__tablename__)
+                identities.add(identify(entity))
 
             def after_commit(session):
+
                 for identity in identities:
                     try:
                         versioner.incr(identity)

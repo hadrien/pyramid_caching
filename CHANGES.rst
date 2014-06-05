@@ -1,3 +1,4 @@
+
 Changelog
 =========
 
@@ -10,12 +11,14 @@ Development
   * Introspectables
   * Content negociation: we should add content type in cache key.
 
+* In ext.sqlalchemy: Increment new and deleted entities and table identities.
+
 0.1.2
 -----
 
 * Breaking changes: ``cache_factory`` keyword arguments ``depends_on`` is a
-  list of callables which receiving request as only argument. Callables return
-  the dependency to be identified by cache manager.
+  list of callables which receiving request as positional argument. Callables
+  return the dependency to be identified by cache manager.
 * Add arguments ``predicates`` to ``cache_factory`` which permits to add
   predicates to cache key used for the view (useful for query strings).
 

@@ -31,6 +31,10 @@ class SqlAlchemyExtensionTests(unittest.TestCase):
         self.config = Configurator(settings={
             'caching.enabled': True,
             })
+
+        Session.add(User(name='hadrien', address='down the hill'))
+        Session.commit()
+
         register_sqla_session_caching_hook(self.config, Session)
         self.config.registry.registerAdapter(DummyIdentityInspector(),
                                              required=[User],
@@ -57,7 +61,7 @@ class SqlAlchemyExtensionTests(unittest.TestCase):
         u = User(name='bob', address='123 street')
         Session.add(u)
         Session.commit()
-        self.assertEqual(self.key_versioner.incr_keys, [])
+        self.assertEqual(self.key_versioner.incr_keys, ['users'])
 
     def test_modify_entity(self):
         u = User(name='joe', address='123 street')
@@ -66,6 +70,13 @@ class SqlAlchemyExtensionTests(unittest.TestCase):
         u.address = '456 moved'
         Session.commit()
         self.assertEqual(self.key_versioner.incr_keys, ['users', 'users:joe'])
+
+    def test_delete_entity(self):
+        user = Session.query(User).filter_by(name='hadrien').first()
+        Session.delete(user)
+        Session.commit()
+        self.assertEqual(self.key_versioner.incr_keys,
+                         ['users', 'users:hadrien'])
 
 
 class User(object):
@@ -84,7 +95,11 @@ class DummyIdentityInspector:
 
 class DummyKeyVersioner:
     def __init__(self):
-        self.incr_keys = []
+        self._incr_keys = set()
 
     def incr(self, key):
-        self.incr_keys.append(key)
+        self._incr_keys.add(key)
+
+    @property
+    def incr_keys(self):
+        return list(self._incr_keys)
