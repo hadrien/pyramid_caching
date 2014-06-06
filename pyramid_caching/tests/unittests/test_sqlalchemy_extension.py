@@ -75,8 +75,8 @@ class SqlAlchemyExtensionTests(unittest.TestCase):
         user = Session.query(User).filter_by(name='hadrien').first()
         Session.delete(user)
         Session.commit()
-        self.assertEqual(self.key_versioner.incr_keys,
-                         ['users', 'users:hadrien'])
+        self.assertItemsEqual(self.key_versioner.incr_keys,
+                              ['users', 'users:hadrien'])
 
 
 class User(object):
