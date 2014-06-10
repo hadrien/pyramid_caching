@@ -12,7 +12,7 @@ def includeme(config):
     """
     parse_settings(config)
 
-    if config.registry.settings['caching.enabled']:
+    if config.registry.settings.get('caching.enabled', 'true'):
         config.include('.versioner')
         config.include('.key_versioner')
         config.include('.serializers')

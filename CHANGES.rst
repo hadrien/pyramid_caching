@@ -1,4 +1,3 @@
-
 Changelog
 =========
 
@@ -12,6 +11,7 @@ Development
   * Content negociation: we should add content type in cache key.
 
 * In ext.sqlalchemy: Increment new and deleted entities and table identities.
+* Simple dependency resolution for location-aware resources.
 
 0.1.2
 -----

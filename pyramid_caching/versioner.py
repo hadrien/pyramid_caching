@@ -14,7 +14,11 @@ def includeme(config):
     registry = config.registry
 
     def identify(model_obj_or_cls):
-        return registry.queryAdapter(model_obj_or_cls, IIdentityInspector)
+        y = registry.queryAdapter(model_obj_or_cls, IIdentityInspector)
+        if y is None:
+            raise TypeError(
+                'Could not adapt %r to a cache identity' % model_obj_or_cls)
+        return y
 
     registry.registerAdapter(lambda x: x, required=[str],
                              provided=IIdentityInspector)
@@ -61,10 +65,7 @@ class TupleIdentityInspector(object):
         self._identify = identify
 
     def identify(self, t):
-        try:
-            return ':'.join([self._identify(elem) for elem in t])
-        except TypeError:
-            raise TypeError("Could not adapt all elements of %r" % repr(t))
+        return ':'.join([self._identify(elem) for elem in t])
 
 
 @implementer(IIdentityInspector)
@@ -90,7 +91,10 @@ class Versioner(object):
             self.registry = config.registry
 
     def identify(self, x):
-        return self.registry.queryAdapter(x, IIdentityInspector)
+        y = self.registry.queryAdapter(x, IIdentityInspector)
+        if y is None:
+            raise TypeError('Could not adapt %r to a cache identity' % x)
+        return y
 
     def get_multi_keys(self, things):
         keys = [self.identify(anything) for anything in things]
