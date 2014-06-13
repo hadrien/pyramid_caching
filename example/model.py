@@ -15,8 +15,7 @@ def includeme(config):
     metadata.create_all(engine)
     Session.configure(bind=engine)
 
-    config.register_sqla_session_caching_hook(Session)
-    config.register_sqla_base_class(Base)
+    config.register_sqlalchemy_caching(Session, Base)
 
     config.scan(__name__)
 

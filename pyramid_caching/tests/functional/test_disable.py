@@ -26,9 +26,7 @@ class Test(Base):
         self.assertFalse(self.config.registry.settings['caching.enabled'])
 
         self.assertTrue(
-            hasattr(self.config, 'register_sqla_session_caching_hook'))
-        self.assertTrue(
-            hasattr(self.config, 'register_sqla_base_class'))
+            hasattr(self.config, 'register_sqlalchemy_caching'))
 
     def test_disabled_cache_view(self):
         self.app.get('/users/1')
