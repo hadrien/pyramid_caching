@@ -3,8 +3,8 @@ from pyramid.httpexceptions import HTTPNotFound
 
 from pyramid_caching.cache import (
     cache_factory,
-    CollectionDependency,
-    QueryStringPredicate,
+    ModelDependency,
+    QueryStringKeyModifier,
     RouteDependency,
     )
 
@@ -40,11 +40,11 @@ def get_user(request):
     renderer='json',
     request_method='GET',
     decorator=cache_factory(
-        predicates=[
-            QueryStringPredicate(['name']),
+        varies_on=[
+            QueryStringKeyModifier(['name']),
             ],
         depends_on=[
-            CollectionDependency(User),
+            ModelDependency(User),
             ],
         ),
     )

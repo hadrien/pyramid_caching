@@ -2,6 +2,7 @@ import unittest
 
 from pyramid import testing
 from pyramid.response import Response
+from webob.multidict import MultiDict
 
 from pyramid_caching.cache import CacheResult
 
@@ -79,13 +80,13 @@ class ViewCacheDecoratorTests(unittest.TestCase):
         response = view(None, request)
         self.assertEqual(response.body, "ok")
 
-    def _make_one(self, predicates=None, depends_on=None, hit=True):
+    def _make_one(self, varies_on=None, depends_on=None, hit=True):
         from pyramid_caching.cache import ViewCacheDecorator
         request = testing.DummyRequest()
         request.registry.settings['caching.enabled'] = True
         request.cache_manager = DummyCacheManager(hit)
         return request, ViewCacheDecorator(self._view,
-                                           predicates=predicates,
+                                           varies_on=varies_on,
                                            depends_on=depends_on)
 
     def test_key_base_from_view_name(self):
@@ -103,15 +104,62 @@ class ViewCacheDecoratorTests(unittest.TestCase):
         self.assertEqual(request.cache_manager.dependencies,
                          [('User', {'id': '123'})])
 
-    def test_key_prefix_from_query_string(self):
-        from pyramid_caching.cache import QueryStringPredicate
-        request, deco = self._make_one(predicates=[
-            QueryStringPredicate(['name']),
+    def test_key_dependencies_from_resource(self):
+        from pyramid_caching.cache import ResourceDependency
+        users = testing.DummyResource(__name__='users', __composite__=True)
+        item = testing.DummyResource(__name__='alice', __parent__=users)
+        request, deco = self._make_one(depends_on=[
+            ResourceDependency(),
             ])
-        request.params = {'name': 'bob', 'utm_campaign': 'xxxx'}
+        context = item
+        deco(context, request)
+        self.assertEqual(request.cache_manager.dependencies,
+                         [({'users': 'alice'},)])
+
+    def test_key_dependencies_from_composite_resource(self):
+        from pyramid_caching.cache import ResourceDependency
+        root = testing.DummyResource()
+        users = testing.DummyResource(__name__='users',
+                                      __parent__=root,
+                                      __composite__=True)
+        request, deco = self._make_one(depends_on=[
+            ResourceDependency(),
+            ])
+        context = users
+        deco(context, request)
+        self.assertEqual(request.cache_manager.dependencies,
+                         [('users',)])
+
+    def test_key_dependencies_from_resource_root(self):
+        from pyramid_caching.cache import ResourceDependency
+        root = testing.DummyResource()
+        request, deco = self._make_one(depends_on=[
+            ResourceDependency(),
+            ])
+        context = root
+        deco(context, request)
+        self.assertEqual(request.cache_manager.dependencies,
+                         [('__root__',)])
+
+    def test_key_prefix_from_partial_query_string(self):
+        from pyramid_caching.cache import QueryStringKeyModifier
+        request, deco = self._make_one(varies_on=[
+            QueryStringKeyModifier(['name']),
+            ])
+        request.params = MultiDict(name='bob', utm_campaign='xxxx')
         deco(None, request)
         self.assertEqual(request.cache_manager.prefixes[-1],
-                         {'name': 'bob'})
+                         {'name': ['bob']})
+
+    def test_key_prefix_from_full_query_string(self):
+        from pyramid_caching.cache import QueryStringKeyModifier
+        request, deco = self._make_one(varies_on=[
+            QueryStringKeyModifier(),
+            ])
+        request.params = MultiDict(name='fred', limit='20')
+        deco(None, request)
+        self.assertEqual(request.cache_manager.prefixes[-1],
+                         {'limit': ['20'], 'name': ['fred']})
 
     def test_cache_miss_calls_view(self):
         request, deco = self._make_one()
