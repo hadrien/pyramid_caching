@@ -16,3 +16,5 @@ redis
 fakeredis
 
 pyramid_metrics >= 0.1.5
+
+pyramid_royal

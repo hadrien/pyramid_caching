@@ -12,6 +12,7 @@ Development
 
 * In ext.sqlalchemy: Increment new and deleted entities and table identities.
 * Simple dependency resolution for location-aware resources.
+* ext.royal: New extension for caching pyramid_royal resources.
 
 0.1.2
 -----
