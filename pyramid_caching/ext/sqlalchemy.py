@@ -1,7 +1,10 @@
+"""Extension to perform cache invalidation in SQLAlchemy ORM classes."""
+
 from __future__ import absolute_import
 
-import inspect
+import functools
 import logging
+import weakref
 
 from zope.interface import implementer
 
@@ -13,96 +16,145 @@ from sqlalchemy import event
 log = logging.getLogger(__name__)
 
 
-def includeme(config):
-    config.add_directive('register_sqla_session_caching_hook',
-                         register_sqla_session_caching_hook)
+def register_sqlalchemy_caching(config, session_factory, base_cls,
+                                identity_inspector=None):
+    """Register SQLAlchemy session commit hooks for cache invalidation.
 
-    config.add_directive('register_sqla_base_class',
-                         register_sqla_base_class)
-
-    if config.registry.settings['caching.enabled']:
-        identity_inspector = SqlAlchemyIdentityInspector()
-
-        config.registry.registerUtility(identity_inspector,
-                                        provided=IIdentityInspector)
-
-
-def register_sqla_base_class(config, base_cls):
+    If the `caching.enabled` configuration setting is set to `true`, no hooks
+    will be registered.
+    """
     if not config.registry.settings['caching.enabled']:
         return
 
     registry = config.registry
 
-    identity_inspector = registry.getUtility(IIdentityInspector)
+    if identity_inspector is None:
+        identity_inspector = DefaultIdentityInspector()
 
-    def identify(model):
-        return identity_inspector.identify(model)
+    registry.registerAdapter(
+        lambda x: identity_inspector.identify_collection(x),
+        required=[Collection],
+        provided=IIdentityInspector)
+    registry.registerAdapter(
+        lambda x: identity_inspector.identify_instance(x),
+        required=[base_cls],
+        provided=IIdentityInspector)
+    registry.registerAdapter(
+        lambda x: identity_inspector.identify_class(x),
+        required=[base_cls.__class__],
+        provided=IIdentityInspector)
 
-    registry.registerAdapter(identify, required=[base_cls],
-                             provided=IIdentityInspector)
-    registry.registerAdapter(identify, required=[base_cls.__class__],
-                             provided=IIdentityInspector)
+    config.action((__name__, 'session_caching_hook'),
+                  _register_sqla_session_caching_hook,
+                  args=(config, session_factory),
+                  order=3)
 
 
-def register_sqla_session_caching_hook(config, session_cls):
-    if not config.registry.settings['caching.enabled']:
-        return
+def includeme(config):
+    """Add a Pyramid configuration method to register session hooks."""
+    config.add_directive('register_sqlalchemy_caching',
+                         register_sqlalchemy_caching)
 
-    def register():
-        versioner = config.get_versioner()
+
+class Collection(object):
+
+    """Annotates an instance object to refer to the containing entity."""
+
+    def __init__(self, instance):
+        """Identify this model instance as a collection."""
+        self.instance = weakref.ref(instance)
+
+
+def _register_sqla_session_caching_hook(config, session_factory):
+    def identify(entity):
         registry = config.registry
+        y = registry.queryAdapter(entity, IIdentityInspector)
+        if y is None:
+            raise TypeError("Could not adapt %r" % entity)
+        return y
 
-        def identify(entity):
-            return registry.queryAdapter(entity, IIdentityInspector)
+    def on_before_commit(session):
+        versioner = config.get_versioner()
+        cache_keys = _get_modified_entity_keys(session, identify)
+        after_commit = functools.partial(
+            _increment_versions_after_commit, versioner, cache_keys)
+        event.listen(session, 'after_commit', after_commit)
 
-        def on_before_commit(session):
-            identities = set()
+    event.listen(session_factory, 'before_commit', on_before_commit)
 
-            for entity in session.new:
-                identities.add(entity.__tablename__)
 
-            for entity in session.dirty:
-                identities.add(entity.__tablename__)
-                identities.add(identify(entity))
+def _get_modified_entity_keys(session, identify_func):
+        identities = set()
+        for entity in session.new:
+            identities.add(identify_func(Collection(entity)))
+        for entity in session.dirty:
+            identities.add(identify_func(Collection(entity)))
+            identities.add(identify_func(entity))
+        for entity in session.deleted:
+            identities.add(identify_func(Collection(entity)))
+            identities.add(identify_func(entity))
+        return identities
 
-            for entity in session.deleted:
-                identities.add(entity.__tablename__)
-                identities.add(identify(entity))
 
-            def after_commit(session):
-
-                for identity in identities:
-                    try:
-                        versioner.incr(identity)
-                    except VersionIncrementError:
-                        log.exception("Entity version increment failed.")
-
-            event.listen(session, 'after_commit', after_commit)
-
-        event.listen(session_cls, 'before_commit', on_before_commit)
-
-    config.action((__name__, 'session_caching_hook'), register, order=3)
+def _increment_versions_after_commit(versioner, cache_keys, *args):
+    for key in cache_keys:
+        try:
+            versioner.incr(key)
+        except VersionIncrementError:
+            log.exception("Entity version increment failed key=%s", key)
 
 
 @implementer(IIdentityInspector)
-class SqlAlchemyIdentityInspector(object):
+class DefaultIdentityInspector(object):
 
-    def identify(self, obj_or_cls):
-        tablename = obj_or_cls.__tablename__
+    """Generate a cache key from SQLAlchemy ORM classes."""
 
-        if inspect.isclass(obj_or_cls):
-            return tablename
+    def table_name(self, entity):
+        """The name of the base table of an ORM entity."""
+        return entity.__tablename__
 
-        ids = ''
+    def primary_key_column_names(self, instance):
+        """The column names identifying the row of this instance."""
+        table = instance.__table__
+        return table.primary_key.columns.keys()
 
-        # with a table user_message with a composite primary key user_id and id
-        # an object user_message(user_id=123, id=456) will give:
-        # 'user_message:user_id=123:id=456'
+    def foreign_key_column_names(self, instance):
+        """The column names that define relationships with this instance."""
+        table = instance.__table__
+        return [fk.parent.name for fk in table.foreign_keys]
 
-        # TODO: if table has no primary keys :-/
-        table = obj_or_cls.__table__
+    def get_value(self, instance, column_name):
+        """Get loaded row data from the column."""
+        return getattr(instance, column_name)
 
-        ids += ':'.join(['%s=%s' % (col_name, getattr(obj_or_cls, col_name))
-                         for col_name in table.primary_key.columns.keys()])
+    def _entity_cache_key(self, instance, column_names):
+        ids = ['{}={}'.format(name, self.get_value(instance, name))
+               for name in sorted(column_names)]
+        return ':'.join([self.table_name(instance)] + ids)
 
-        return ':'.join([tablename, ids])
+    def identify_class(self, cls):
+        """Get the cache key for the model class."""
+        return self.table_name(cls)
+
+    def identify_collection(self, collection):
+        """Get the cache key for the collection containing a model instance.
+
+        With a table user_message with a foreign key `user_id`, the collection
+        containing the object `<UserMessage user_id=123, id=456>` will have the
+        cache key: `'user_message:user_id=123'`.
+        """
+        instance = collection.instance()
+        if instance is None:
+            return ''
+        column_names = self.foreign_key_column_names(instance)
+        return self._entity_cache_key(instance, column_names)
+
+    def identify_instance(self, instance):
+        """Get the cache key for a model instance.
+
+        With a table user_message with a composite primary key `user_id` and
+        `id`, an object `<UserMessage user_id=123, id=456>` will have the cache
+        key: `'user_message:id=456:user_id=123'`.
+        """
+        column_names = self.primary_key_column_names(instance)
+        return self._entity_cache_key(instance, column_names)

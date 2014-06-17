@@ -1,44 +1,50 @@
 import unittest
 
 from pyramid.config import Configurator
-from sqlalchemy import create_engine, Column, Integer, MetaData, String, Table
-from sqlalchemy.orm import clear_mappers, mapper, scoped_session, sessionmaker
-from zope.interface import implementer
+from sqlalchemy import create_engine, Column, ForeignKey, Integer, String
+from sqlalchemy.ext.declarative import declarative_base, DeferredReflection
+from sqlalchemy.orm import scoped_session, sessionmaker
 
 from pyramid_caching.interfaces import IIdentityInspector
 from pyramid_caching.versioner import Versioner
-from pyramid_caching.ext.sqlalchemy import register_sqla_session_caching_hook
+from pyramid_caching.ext.sqlalchemy import register_sqlalchemy_caching
 
-engine = create_engine('sqlite:///:memory:')
-metadata = MetaData(engine)
 
-Session = scoped_session(sessionmaker())
-Session.configure(bind=engine)
+Base = declarative_base(cls=DeferredReflection)
+
+
+class User(Base):
+    __tablename__ = 'users'
+
+    id = Column('id', Integer, primary_key=True)
+    name = Column('name', String(100), primary_key=True)
+    address = Column('address', String(100), nullable=False)
+
+
+class Score(Base):
+    __tablename__ = 'scores'
+
+    id = Column('id', Integer, primary_key=True)
+    user_id = Column('user_id', ForeignKey('users.id'))
+    points = Column('points', Integer)
 
 
 class SqlAlchemyExtensionTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        users = Table('users', metadata,
-                      Column('id', Integer, primary_key=True),
-                      Column('name', String(100), nullable=False),
-                      Column('address', String(100), nullable=False),
-                      )
-        metadata.create_all()
-        mapper(User, users)
-
     def setUp(self):
+        self.engine = create_engine('sqlite:///:memory:')
+        self.session = scoped_session(sessionmaker(bind=self.engine))
+        Base.metadata.create_all(self.engine)
+        Base.prepare(self.engine)
+
+        user = User(id=1, name='hadrien', address='down the hill')
+        self.session.add(user)
+        self.session.commit()
+
         self.config = Configurator(settings={
             'caching.enabled': True,
             })
+        register_sqlalchemy_caching(self.config, self.session, Base)
 
-        Session.add(User(name='hadrien', address='down the hill'))
-        Session.commit()
-
-        register_sqla_session_caching_hook(self.config, Session)
-        self.config.registry.registerAdapter(DummyIdentityInspector(),
-                                             required=[User],
-                                             provided=IIdentityInspector)
         self.config.registry.registerAdapter(lambda x: x,
                                              required=[str],
                                              provided=IIdentityInspector)
@@ -51,46 +57,41 @@ class SqlAlchemyExtensionTests(unittest.TestCase):
         self.config.commit()
 
     def tearDown(self):
-        Session.close_all()
-
-    @classmethod
-    def tearDownClass(cls):
-        clear_mappers()
+        Base.metadata.drop_all(self.engine)
 
     def test_create_entity(self):
-        u = User(name='bob', address='123 street')
-        Session.add(u)
-        Session.commit()
+        u = User(id=2, name='bob', address='123 street')
+        self.session.add(u)
+        self.session.commit()
         self.assertEqual(self.key_versioner.incr_keys, ['users'])
 
     def test_modify_entity(self):
-        u = User(name='joe', address='123 street')
-        Session.add(u)
-        Session.commit()
+        u = User(id=2, name='joe', address='123 street')
+        self.session.add(u)
+        self.session.commit()
         u.address = '456 moved'
-        Session.commit()
-        self.assertEqual(self.key_versioner.incr_keys, ['users', 'users:joe'])
+        self.session.commit()
+        self.assertItemsEqual(
+            self.key_versioner.incr_keys,
+            ['users', 'users:id=2:name=joe'])
 
     def test_delete_entity(self):
-        user = Session.query(User).filter_by(name='hadrien').first()
-        Session.delete(user)
-        Session.commit()
-        self.assertItemsEqual(self.key_versioner.incr_keys,
-                              ['users', 'users:hadrien'])
+        user = self.session.query(User).filter_by(name='hadrien').first()
+        self.session.delete(user)
+        self.session.commit()
+        self.assertItemsEqual(
+            self.key_versioner.incr_keys,
+            ['users', 'users:id=1:name=hadrien'])
 
-
-class User(object):
-    __tablename__ = 'users'
-
-    def __init__(self, name, address):
-        self.name = name
-        self.address = address
-
-
-@implementer(IIdentityInspector)
-class DummyIdentityInspector:
-    def __call__(self, entity):
-        return entity.__tablename__ + ':' + entity.name
+    def test_add_to_collection(self):
+        u = User(id=2, name='derek', address='1000 high rd')
+        s = Score(id=1, user_id=u.id, points=25)
+        self.session.add(u)
+        self.session.add(s)
+        self.session.commit()
+        self.assertItemsEqual(
+            self.key_versioner.incr_keys,
+            ['users', 'scores:user_id=2'])
 
 
 class DummyKeyVersioner:
