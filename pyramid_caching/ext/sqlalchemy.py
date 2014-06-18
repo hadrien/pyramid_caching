@@ -98,6 +98,8 @@ def _get_modified_entity_keys(session, identify_func):
 
 def _increment_versions_after_commit(versioner, cache_keys, *args):
     for key in cache_keys:
+        if not key:
+            continue
         try:
             versioner.incr(key)
         except VersionIncrementError:
@@ -123,13 +125,15 @@ class DefaultIdentityInspector(object):
         table = instance.__table__
         return [fk.parent.name for fk in table.foreign_keys]
 
-    def get_value(self, instance, column_name):
-        """Get loaded row data from the column."""
-        return getattr(instance, column_name)
-
     def _entity_cache_key(self, instance, column_names):
-        ids = ['{}={}'.format(name, self.get_value(instance, name))
-               for name in sorted(column_names)]
+        ids = []
+        for col_name in sorted(column_names):
+            value = getattr(instance, col_name)
+            if value is not None:
+                ids.append('{}={}'.format(col_name, value))
+            else:
+                log.warning('Caching key %s:%s is None',
+                            self.table_name(instance), col_name)
         return ':'.join([self.table_name(instance)] + ids)
 
     def identify_class(self, cls):
@@ -145,8 +149,11 @@ class DefaultIdentityInspector(object):
         """
         instance = collection.instance()
         if instance is None:
+            # Referent has been garbage collected.
             return ''
         column_names = self.foreign_key_column_names(instance)
+        if column_names is None:
+            return ''
         return self._entity_cache_key(instance, column_names)
 
     def identify_instance(self, instance):
@@ -157,4 +164,6 @@ class DefaultIdentityInspector(object):
         key: `'user_message:id=456:user_id=123'`.
         """
         column_names = self.primary_key_column_names(instance)
+        if column_names is None:
+            return ''
         return self._entity_cache_key(instance, column_names)
