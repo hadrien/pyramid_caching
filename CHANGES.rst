@@ -10,7 +10,10 @@ Development
   * Introspectables
   * Content negociation: we should add content type in cache key.
 
-* In ext.sqlalchemy: Increment new and deleted entities and table identities.
+0.2.0
+-----
+
+* ext.sqlalchemy: Increment new and deleted entities and table identities.
 * Simple dependency resolution for location-aware resources.
 * ext.royal: New extension for caching pyramid_royal resources.
 * Allow key identity generators to define resources that don't need to be
