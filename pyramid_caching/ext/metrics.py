@@ -21,7 +21,7 @@ def includeme(config):
 
     """
     config.include('pyramid_metrics')
-    config.scan()
+    config.scan(__name__)
 
 
 @subscriber(ViewCacheHit)
