@@ -10,9 +10,8 @@ from pyramid_caching.interfaces import (
     ICacheClient,
     ICacheManager,
     )
-from pyramid_caching.exc import (
-    CacheDisabled,
-    )
+from pyramid_caching.exc import Base as BaseCacheError
+from pyramid_caching.exc import CacheDisabled
 
 log = logging.getLogger(__name__)
 
@@ -206,9 +205,9 @@ class ViewCacheDecorator(object):
         def get_result():
             return self.view(context, request)
 
-        def nocache_result():
+        def nocache_result(header='DISABLED'):
             response = get_result()
-            response.headers['X-View-Cache'] = 'DISABLED'
+            response.headers['X-View-Cache'] = header
             return response
 
         if not request.registry.settings.get('caching.enabled', False):
@@ -229,6 +228,9 @@ class ViewCacheDecorator(object):
                                                 dependencies)
         except CacheDisabled:
             return nocache_result()
+        except BaseCacheError:
+            log.warning('cache backend failed, calling application view', exc_info=True)
+            return nocache_result(header='ERROR')
 
         response = result.data
         result_info = result.info()

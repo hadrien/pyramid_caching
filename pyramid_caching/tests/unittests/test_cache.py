@@ -5,6 +5,7 @@ from pyramid.response import Response
 from webob.multidict import MultiDict
 
 from pyramid_caching.cache import CacheResult
+from pyramid_caching.exc import CacheGetError, VersionGetError
 
 
 class CacheManagerTests(unittest.TestCase):
@@ -80,11 +81,11 @@ class ViewCacheDecoratorTests(unittest.TestCase):
         response = view(None, request)
         self.assertEqual(response.body, "ok")
 
-    def _make_one(self, varies_on=None, depends_on=None, hit=True):
+    def _make_one(self, varies_on=None, depends_on=None, hit=True, fail_with=None):
         from pyramid_caching.cache import ViewCacheDecorator
         request = testing.DummyRequest()
         request.registry.settings['caching.enabled'] = True
-        request.cache_manager = DummyCacheManager(hit)
+        request.cache_manager = DummyCacheManager(hit=hit, fail_with=fail_with)
         return request, ViewCacheDecorator(self._view,
                                            varies_on=varies_on,
                                            depends_on=depends_on)
@@ -210,6 +211,16 @@ class ViewCacheDecoratorTests(unittest.TestCase):
         deco(None, request)
         self.assertEqual(len(miss_events), 1)
 
+    def test_bypass_cache_on_versioner_error(self):
+        request, deco = self._make_one(fail_with=VersionGetError)
+        response = deco(None, request)
+        self.assertEqual(response.headers['X-View-Cache'], 'ERROR')
+
+    def test_bypass_cache_on_storage_error(self):
+        request, deco = self._make_one(fail_with=CacheGetError)
+        response = deco(None, request)
+        self.assertEqual(response.headers['X-View-Cache'], 'ERROR')
+
 
 class DummyVersioner:
     def get_multi_keys(self, dependencies):
@@ -236,10 +247,13 @@ class DummySerializer:
 
 
 class DummyCacheManager:
-    def __init__(self, hit=True):
+    def __init__(self, fail_with=None, hit=True):
         self.hit = hit
+        self.fail_with = fail_with
 
     def get_or_cache(self, get_result, prefixes, dependencies):
+        if self.fail_with is not None:
+            raise self.fail_with
         self.get_result = get_result
         self.prefixes = prefixes
         self.dependencies = dependencies
