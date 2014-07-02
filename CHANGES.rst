@@ -1,14 +1,19 @@
 Changelog
 =========
 
+
+TODO
+----
+
+* DOCUMENTATION.
+* Introspectables
+* Content negociation: we should add content type in cache key.
+
 Development
 -----------
 
-* TODO:
-
-  * DOCUMENTATION.
-  * Introspectables
-  * Content negociation: we should add content type in cache key.
+* Bypass cache when an error occurs while getting the cache key version or the
+  cached data.
 
 0.2.0
 -----
