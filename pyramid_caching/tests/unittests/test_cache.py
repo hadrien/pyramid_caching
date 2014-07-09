@@ -85,6 +85,7 @@ class ViewCacheDecoratorTests(unittest.TestCase):
         from pyramid_caching.cache import ViewCacheDecorator
         request = testing.DummyRequest()
         request.registry.settings['caching.enabled'] = True
+        request.scheme = 'https'
         request.cache_manager = DummyCacheManager(hit=hit, fail_with=fail_with)
         return request, ViewCacheDecorator(self._view,
                                            varies_on=varies_on,
@@ -93,7 +94,8 @@ class ViewCacheDecoratorTests(unittest.TestCase):
     def test_key_base_from_view_name(self):
         request, deco = self._make_one()
         deco(None, request)
-        self.assertEqual(request.cache_manager.prefixes, [__name__, '_view'])
+        self.assertEqual(request.cache_manager.prefixes,
+                         [__name__, '_view', 'https'])
 
     def test_key_dependencies_from_route(self):
         from pyramid_caching.cache import RouteDependency
