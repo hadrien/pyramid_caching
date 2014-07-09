@@ -9,6 +9,11 @@ TODO
 * Introspectables
 * Content negociation: we should add content type in cache key.
 
+0.2.3
+-----
+
+* New release to fix packaging issue
+
 0.2.2
 -----
 
