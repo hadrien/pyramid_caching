@@ -218,6 +218,7 @@ class ViewCacheDecorator(object):
         prefixes = [self.view.__module__, self.view.__name__]
         if context is not None and context.__name__ is not None:
             prefixes.extend([context.__module__, context.__name__])
+        prefixes.append(request.scheme)
         prefixes.extend(self.get_modifiers(request))
 
         dependencies = self.get_dependencies(context, request)

@@ -9,6 +9,11 @@ TODO
 * Introspectables
 * Content negociation: we should add content type in cache key.
 
+0.2.2
+-----
+
+* Add the HTTP scheme to the cache key (mostly for generated links in response)
+
 0.2.1
 -----
 
