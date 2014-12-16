@@ -9,6 +9,11 @@ TODO
 * Introspectables
 * Content negociation: we should add content type in cache key.
 
+Development
+-----------
+
+* Fix invalid Graphite metric names (replace periods/colon with underscore)
+
 0.2.3
 -----
 
