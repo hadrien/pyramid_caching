@@ -25,7 +25,7 @@ class MetricsFunctionalTests(TestCase):
         self.app.get('/users/1')
         m_incr = m_statsd.return_value.incr
         m_incr.assert_called_once_with(
-            'cache.miss.example.views:get_user:http', count=1)
+            'cache.miss.example_views_get_user_http', count=1)
 
     @mock.patch('pyramid_metrics.utility.StatsClient')
     def test_cache_hit(self, m_statsd):
@@ -34,8 +34,8 @@ class MetricsFunctionalTests(TestCase):
 
         m_incr = m_statsd.return_value.incr
         m_incr.assert_has_calls([
-            mock.call('cache.miss.example.views:get_user:http', count=1),
-            mock.call('cache.hit.example.views:get_user:http', count=1),
+            mock.call('cache.miss.example_views_get_user_http', count=1),
+            mock.call('cache.hit.example_views_get_user_http', count=1),
             ])
 
 

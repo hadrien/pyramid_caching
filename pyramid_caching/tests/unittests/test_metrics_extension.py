@@ -9,14 +9,14 @@ class TestMetricsExtension(unittest.TestCase):
         event = DummyEvent()
         cache_hit(event)
         self.assertEqual(len(event.request.metrics.keys), 1)
-        self.assertEqual(event.request.metrics.keys[0], ('cache.hit', 'a:b'))
+        self.assertEqual(event.request.metrics.keys[0], ('cache.hit', 'a_b'))
 
     def test_cache_miss(self):
         from pyramid_caching.ext.metrics import cache_miss
         event = DummyEvent()
         cache_miss(event)
         self.assertEqual(len(event.request.metrics.keys), 1)
-        self.assertEqual(event.request.metrics.keys[0], ('cache.miss', 'a:b'))
+        self.assertEqual(event.request.metrics.keys[0], ('cache.miss', 'a_b'))
 
 
 class DummyEvent:

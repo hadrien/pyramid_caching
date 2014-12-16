@@ -36,4 +36,5 @@ def cache_miss(event):
 
 def count_view_cache_event(event, access):
     metrics = event.request.metrics
-    metrics.incr(('cache.%s' % access, event.cache_key.root()))
+    key = event.cache_key.root().replace(':', '_').replace('.', '_')
+    metrics.incr(('cache.%s' % access, key))
